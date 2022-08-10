@@ -87,13 +87,24 @@ WSGI_APPLICATION = 'B2Cbot.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/4.0/ref/settings/#databases
 
-DATABASES = {'default': env.dj_db_url('DATABASE_URL')}
+# DATABASES = {'default': env.dj_db_url('DATABASE_URL')}
 
 if DEBUG:
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
             'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql_psycopg2',
+            'NAME': 'b2cdb',
+            'USER': 'javohir',
+            'PASSWORD': 'password',
+            'HOST': 'localhost',
+            'PORT': '',
         }
     }
 
