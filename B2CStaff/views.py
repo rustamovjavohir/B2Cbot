@@ -4,7 +4,7 @@ from telegram import Update, Bot
 from telegram.ext import CallbackContext
 
 from B2CStaff.keyboards import start_button_kuryer, get_order_button, courier_start_work_button, \
-    courier_finished_work_button, accept_order, arriva_recipient_button
+    courier_finished_work_button, accept_order
 from B2CStaff.models import Kuryer_step, Dispatcher, Kuryer
 from B2CStaff.utils import is_kuryer, is_disp, inform
 from tgbot.models import B2COrder, B2CCommandText, B2CUser
@@ -27,7 +27,8 @@ def start(update: Update, context: CallbackContext):
             update.message.reply_text(
                 f"<i>Ассалому алейкум! <ins><b>{update.message.from_user.first_name}</b></ins></i>\n"
                 f"<i>Роль: <ins><b>Диспетчер</b></ins></i>",
-                parse_mode="HTML", )
+                parse_mode="H"
+                           "TML", )
 
         else:
             update.message.delete()
@@ -59,10 +60,6 @@ def kuryer_handler(update: Update, context: CallbackContext):
                     update.message.reply_text(parse_mode="HTML",
                                               disable_web_page_preview=True,
                                               text=inform(order), reply_markup=accept_order(order.id))
-                elif order.status == B2COrder.StatusOrder.DELIVERY_OF_PAYMENT_OR_DOCUMENT_TO_PARTNER:
-                    update.message.reply_text(parse_mode="HTML",
-                                              disable_web_page_preview=True,
-                                              text=inform(order), reply_markup=arriva_recipient_button(order.id))
                 else:
                     update.message.reply_text("🔴Этот заказ завершен")
             else:
