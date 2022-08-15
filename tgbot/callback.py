@@ -3,10 +3,11 @@ import re
 from telegram import Update
 from telegram.ext import CallbackContext
 
+from B2CStaff.keyboards import review_list_button
 from tgbot.keyboards import phone_keyboard, weight_type_button, locations_button, back_markup, order_markup, \
-    inline, apply_button
-from tgbot.models import B2CUser, B2CCommandText, B2CStep, B2COrder
-from tgbot.utils import command_line, order_text, type_order_util, create_order
+    inline, apply_button, change_profile_language, change_profile, apply_get
+from tgbot.models import B2CUser, B2CCommandText, B2CStep, B2COrder, B2CPrice
+from tgbot.utils import command_line, order_text, type_order_util, create_order, user_profile
 from tgbot.views import main_handler
 
 
@@ -18,15 +19,17 @@ def keyboard_callback(update: Update, context: CallbackContext):
     if query_data[0].__eq__('lang'):
         try:
             lang = query_data[-1]
-            tex = B2CCommandText.objects.filter(text_code=1, lang_code=lang).first().text
-            text = command_line(tex)
-            phone_text = B2CCommandText.objects.filter(text_code=3, lang_code=lang).first().text
-            update.callback_query.delete_message()
-            B2CUser.objects.filter(telegram_id=user_id).update(lang=lang, step=1)
-            context.bot.send_message(chat_id=user_id, text="Оферта", reply_markup=apply_button(lang_code=lang))
-            # context.bot.send_message(chat_id=user_id,
-            #                          text=text,
-            #                          reply_markup=phone_keyboard(phone_text))
+            if query_data[1].__eq__("change"):
+                B2CUser.objects.filter(telegram_id=user_id).update(lang=lang)
+                text = user_profile(user_id)
+                update.callback_query.edit_message_text(text=text, parse_mode="HTML",
+                                                        reply_markup=change_profile(lang))
+
+            else:
+                phone_text = B2CCommandText.objects.filter(text_code=3, lang_code=lang).first().text
+                update.callback_query.delete_message()
+                B2CUser.objects.filter(telegram_id=user_id).update(lang=lang, step=1)
+                context.bot.send_message(chat_id=user_id, text="Оферта", reply_markup=apply_button(lang_code=lang))
         except Exception as ex:
             print(ex, "lang")
     elif query_data[0].__eq__('profile_change_name'):
@@ -35,7 +38,6 @@ def keyboard_callback(update: Update, context: CallbackContext):
         name_text = B2CCommandText.objects.filter(text_code=2, lang_code=user.lang).first().text
         text = command_line(name_text)
         update.callback_query.edit_message_text(text)
-        # context.bot.send_message(chat_id=user_id, text=text)
     elif query_data[0].__eq__('profile_change_phone'):
         user.step = 7
         user.save()
@@ -44,6 +46,10 @@ def keyboard_callback(update: Update, context: CallbackContext):
         update.callback_query.delete_message()
         context.bot.send_message(chat_id=user_id, text=text,
                                  reply_markup=phone_keyboard(user.lang))
+    elif query_data[0].__eq__('profile_change_lang'):
+        update.callback_query.edit_message_text(f"\nO'zingizga qulay tilni tanlang!\n-----"
+                                                f"\nВыберите удобный Вам язык!", reply_markup=change_profile_language())
+
     elif query_data[0].__eq__('create_order'):
         try:
             update.callback_query.message.delete()
@@ -54,37 +60,23 @@ def keyboard_callback(update: Update, context: CallbackContext):
     elif query_data[0].__eq__('simple_delivery'):
         try:
             update.callback_query.message.delete()
-            B2CStep.objects.filter(created_by=user_id).update(step=1, is_safe=True)
-            type_order_util(update, context)
-        except Exception as ex:
-            print(ex, "-simple_delivery")
-    elif query_data[0].__eq__('safe_delivery'):
-        try:
-            update.callback_query.message.delete()
-            B2CStep.objects.filter(created_by=user_id).update(step=1)
-            type_order_util(update, context)
-        except Exception as ex:
-            print(ex, "- safe_delivery")
-    elif query_data[0].__eq__('personal_order'):
-        try:
-            update.callback_query.message.delete()
+            B2CStep.objects.filter(created_by=user_id).update(step=1, is_safe=False)
             B2CStep.objects.filter(created_by=user_id).update(step=2, sender_name=user.first_name,
                                                               from_location=user.address,
                                                               sender_phone=user.phone_number, is_self=True)
             create_order(update, context)
         except Exception as ex:
-            print(ex, '\n----Personal')
-    elif query_data[0].__eq__('new_order'):
+            print(ex, "-simple_delivery")
+    elif query_data[0].__eq__('safe_delivery'):
         try:
             update.callback_query.message.delete()
-            B2CStep.objects.filter(created_by=user_id).update(step=2, sender_name=None,
-                                                              from_location=None,
-                                                              sender_phone=None,
-                                                              is_self=False)
+            B2CStep.objects.filter(created_by=user_id).update(step=1, is_safe=True)
+            B2CStep.objects.filter(created_by=user_id).update(step=2, sender_name=user.first_name,
+                                                              from_location=user.address,
+                                                              sender_phone=user.phone_number)
             create_order(update, context)
         except Exception as ex:
-            print(ex, '\n---- new order')
-
+            print(ex, "- safe_delivery")
     elif query_data[0].__eq__('model'):
         try:
             update.callback_query.message.delete()
@@ -142,6 +134,24 @@ def keyboard_callback(update: Update, context: CallbackContext):
         msg = context.bot.send_message(chat_id=user_id, text=comment_text,
                                        reply_markup=back_markup(user.lang))
         B2CStep.objects.filter(created_by=user_id).update(step=11, delete_message=msg.message_id)
+    elif query_data[0].__eq__("come_back"):
+        update.callback_query.message.delete()
+        b2c_step = B2CStep.objects.get(created_by=user_id)
+        if b2c_step.come_back:
+            b2c_step.come_back = False
+            if b2c_step.is_safe:
+                b2c_step.price -= B2CPrice.objects.last().price_come_back
+            else:
+                b2c_step.price -= B2CPrice.objects.first().price_come_back
+        else:
+            b2c_step.come_back = True
+            if b2c_step.is_safe:
+                b2c_step.price += B2CPrice.objects.last().price_come_back
+            else:
+                b2c_step.price += B2CPrice.objects.first().price_come_back
+        b2c_step.save()
+        text = order_text(user.lang, user_id)
+        update.callback_query.message.reply_html(text, disable_web_page_preview=True, reply_markup=inline(user.lang))
     elif query_data[0].__eq__('send'):
         update.callback_query.delete_message()
         text = order_text(user.lang, user_id)
@@ -156,7 +166,7 @@ def keyboard_callback(update: Update, context: CallbackContext):
             B2COrder(order_name=step.order_name, weight=step.weight, sender_name=step.sender_name,
                      sender_phone=step.sender_phone, from_location=step.from_location, to_location=step.to_location,
                      recipient_name=step.recipient_name, recipient_phone=step.recipient_phone, comment=step.comment,
-                     created_by=step.created_by, price=step.price, is_safe=step.is_safe).save()
+                     created_by=step.created_by, price=step.price, is_safe=step.is_safe, come_back=step.come_back).save()
             B2CUser.objects.filter(telegram_id=user_id).update(address=step.from_location)
             step.delete()
             context.bot.send_message(chat_id=user_id, text=text, parse_mode='HTML',
@@ -164,7 +174,8 @@ def keyboard_callback(update: Update, context: CallbackContext):
     elif query_data[0].__eq__('home'):
         B2CStep.objects.filter(created_by=user_id).update(step=0)
         update.callback_query.message.delete()
-        context.bot.send_message(chat_id=user_id, text="Выберите действие", reply_markup=order_markup(user.lang))
+        select_action_text = B2CCommandText.objects.filter(text_code=13, lang_code=user.lang).first().text
+        context.bot.send_message(chat_id=user_id, text=select_action_text, reply_markup=order_markup(user.lang))
         user.step = 5
         user.save()
     elif query_data[0].__eq__("order_del"):
@@ -175,3 +186,24 @@ def keyboard_callback(update: Update, context: CallbackContext):
         update.callback_query.delete_message()
     elif query_data[0].__eq__("order_close"):
         update.callback_query.delete_message()
+    elif query_data[0].__eq__("review"):
+        ball = eval(query_data[-1])
+        msg = update.callback_query.message
+        msg = msg.text if msg.text else msg.caption
+        # if msg.text:
+        #     msg = msg.text
+        # else:
+        #     msg = msg.caption
+        order_id = [x for x in re.findall(r'-?\d+\.?\d*', msg)]
+        kuryer = B2COrder.objects.get(id=order_id[0]).kuryer
+        kuryer.ball = round((kuryer.ball + ball) / 2, 2)
+        kuryer.save()
+        update.callback_query.message.edit_reply_markup()
+    elif query_data[-1].__eq__("apply_get_product"):
+        order_id = query_data[0]
+        order = B2COrder.objects.get(id=order_id)
+        order.status = order.StatusOrder.COMPLETED
+        order.save()
+        update.callback_query.message.edit_text(text=f"№ {order_id} Mahsulot: {order.order_name}\n"
+                                                     f" Xizmatga baho bering",
+                                                reply_markup=review_list_button())

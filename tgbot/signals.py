@@ -6,6 +6,7 @@ from telegram import InlineKeyboardButton, Bot, InlineKeyboardMarkup
 
 from B2CStaff.models import Kuryer, Dispatcher
 from B2CStaff.utils import inform, kuryer_text
+from tgbot.keyboards import apply_get
 from tgbot.models import B2COrder
 
 staffbot = Bot(token=settings.TELEGRAM_TOKEN_B2CSTAFF)
@@ -45,10 +46,34 @@ def pre_save_order(sender, instance, *args, **kwargs):
         previous = B2COrder.objects.get(id=instance.id)
 
         previous_kuryer = getattr(previous, "kuryer")
+        del_courier = getattr(previous, 'del_courier')
+        order_status = getattr(previous, 'status')
         if previous_kuryer != instance.kuryer:
             user_telegram_id = instance.created_by
-            text = kuryer_text(instance.kuryer)
-            userbot.send_message(chat_id=user_telegram_id, text=text, parse_mode="HTML", )
+            text = kuryer_text(instance.kuryer, instance.order_name, order_status)
+            try:
+                userbot.delete_message(chat_id=user_telegram_id, message_id=del_courier)
+            except Exception as ex:
+                pass
+            msg = userbot.send_message(chat_id=user_telegram_id, text=text, parse_mode="HTML", )
+            instance.del_courier = msg.message_id
+
+        if order_status != instance.status:
+            user_telegram_id = instance.created_by
+            text = kuryer_text(instance.kuryer, instance.order_name, instance.status)
+            try:
+                userbot.delete_message(chat_id=user_telegram_id, message_id=msg.message_id)
+            except Exception as ex:
+                pass
+            try:
+                userbot.delete_message(chat_id=user_telegram_id, message_id=del_courier)
+            except Exception as ex:
+                pass
+            if instance.status == B2COrder.StatusOrder.CUSTOMER_CONFIRMATION_PENDING:
+                userbot.send_message(chat_id=user_telegram_id, text="Tovarni olganingizni tasdiqlang",
+                                     reply_markup=apply_get(order_id=instance.id))
+            msg = userbot.send_message(chat_id=user_telegram_id, text=text, parse_mode="HTML", )
+            instance.del_courier = msg.message_id
 
     except Exception as ex:
         pass

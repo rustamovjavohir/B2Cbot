@@ -97,3 +97,37 @@ def courier_list_button(couriers, instance):
     button.append([InlineKeyboardButton(f"❌Отменить заказ",
                                         callback_data=f"{instance.id}_cancelapply")])
     return InlineKeyboardMarkup(button)
+
+
+def review_list_button():
+    button = [
+        [
+            InlineKeyboardButton("😠", callback_data='review-1'),
+            InlineKeyboardButton("☹", callback_data='review-2'),
+            InlineKeyboardButton("😐", callback_data='review-3'),
+            InlineKeyboardButton("🙂", callback_data='review-4'),
+            InlineKeyboardButton("😁", callback_data='review-5'),
+        ]
+    ]
+
+    return InlineKeyboardMarkup(button)
+
+
+def come_back_button(order_id):
+    button = [
+        [
+            InlineKeyboardButton("Возвращаться", callback_data=f"{order_id}_come-back")
+        ]
+    ]
+
+    return InlineKeyboardMarkup(button)
+
+
+def come_back_done_button(order_id):
+    button = [
+        [
+            InlineKeyboardButton("Вернулся", callback_data=f"{order_id}_come-back-done")
+        ]
+    ]
+
+    return InlineKeyboardMarkup(button)

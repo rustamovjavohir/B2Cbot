@@ -4,7 +4,7 @@ from telegram import Update
 from telegram.ext import CallbackContext
 
 from B2CStaff.keyboards import accept_order, arrive_sender_button, get_first_image, arriva_recipient_button, \
-    get_second_image, order_change_courier, courier_list_button
+    get_second_image, order_change_courier, courier_list_button, come_back_done_button
 from B2CStaff.models import Kuryer
 from B2CStaff.models import Kuryer_step
 from B2CStaff.utils import inform
@@ -45,6 +45,7 @@ def keyboard_callback(update: Update, context: CallbackContext):
 
             msg = context.bot.send_message(text=text, chat_id=kuryer.kuryer_telegram_id, parse_mode="HTML",
                                            reply_markup=accept_order(order.id))
+
             order.del_message = msg.message_id
             order.save()
         else:
@@ -64,7 +65,9 @@ def keyboard_callback(update: Update, context: CallbackContext):
         update.callback_query.edit_message_text(text, parse_mode="HTML", reply_markup=arrive_sender_button(order_id))
     elif query_data[-1].__eq__("came"):
         order_id = query_data[0]
-        order = B2COrder.objects.filter(id=order_id).update(status=B2COrder.StatusOrder.COURIER_ARRIVED_AT_THE_SENDER)
+        order = B2COrder.objects.get(id=order_id)
+        order.status = B2COrder.StatusOrder.COURIER_ARRIVED_AT_THE_SENDER
+        order.save()
         update.callback_query.edit_message_reply_markup(reply_markup=get_first_image(order_id))
     elif query_data[-1].__eq__("image1"):
         order_id = query_data[0]
@@ -82,13 +85,16 @@ def keyboard_callback(update: Update, context: CallbackContext):
         update.callback_query.message.delete()
         context.bot.send_message(chat_id=user_id, text="📎 Сфотографируйте продукт")
     elif query_data[-1].__eq__("go"):
-        order_id = query_data[0]
-        order = B2COrder.objects.filter(id=order_id).update(status=B2COrder.StatusOrder.COURIER_RECEIVED_THE_SHIPMENT)
+        order_id = query_data[0]  # go
+        order = B2COrder.objects.get(id=order_id)
+        order.status = B2COrder.StatusOrder.DELIVERED
+        order.save()
         update.callback_query.edit_message_reply_markup(reply_markup=arriva_recipient_button(order_id))
     elif query_data[-1].__eq__("came2"):
         order_id = query_data[0]
-        order = B2COrder.objects.filter(id=order_id).update(
-            status=B2COrder.StatusOrder.DELIVERED)
+        order = B2COrder.objects.get(id=order_id)
+        order.status = B2COrder.StatusOrder.COURIER_ARRIVED_AT_THE_RECIPIENT
+        order.save()
         update.callback_query.edit_message_reply_markup(reply_markup=get_second_image(order_id))
     elif query_data[-1].__eq__("image2"):
         Kuryer.objects.filter(kuryer_telegram_id=k_step.admin_id).update(status=Kuryer.StatusKuryer.COURIER_FREE)
@@ -98,3 +104,16 @@ def keyboard_callback(update: Update, context: CallbackContext):
         k_step.save()
         update.callback_query.message.delete()
         context.bot.send_message(chat_id=user_id, text="📎 Сфотографируйте продукт")
+    elif query_data[-1].__eq__("come-back"):
+        order_id = query_data[0]
+        msg = update.callback_query.edit_message_reply_markup(reply_markup=come_back_done_button(order_id))
+        order = B2COrder.objects.get(id=order_id)
+        order.status = order.StatusOrder.ORDER_COME_BACK
+        order.del_message = msg.message_id
+        order.save()
+    elif query_data[-1].__eq__("come-back-done"):
+        order_id = query_data[0]
+        order = B2COrder.objects.get(id=order_id)
+        order.status = order.StatusOrder.CUSTOMER_CONFIRMATION_PENDING
+        order.save()
+        update.callback_query.edit_message_reply_markup()

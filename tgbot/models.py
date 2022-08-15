@@ -51,6 +51,8 @@ class B2COrder(models.Model):
         COURIER_RECEIVED_THE_SHIPMENT = "Курьер получил заказ"
         DELIVERED = "Доставляется"
         COURIER_ARRIVED_AT_THE_RECIPIENT = "Курьер приехал к получателю"
+        ORDER_COME_BACK = "Товар возвращаться"
+        CUSTOMER_CONFIRMATION_PENDING = "Ожидается подтверждение клиента"
         COMPLETED = '✅Завершен'
 
     order_name = models.CharField(max_length=2000, verbose_name="Наименование товара")
@@ -69,8 +71,10 @@ class B2COrder(models.Model):
     before_image = models.CharField(default="", max_length=150, verbose_name="Первая картинка", blank=True)
     after_image = models.CharField(default="", max_length=150, verbose_name="Вторая картинка", blank=True)
     created_by = models.BigIntegerField()
+    come_back = models.BooleanField(default=False, verbose_name="Обратно")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Дата")
     del_message = models.IntegerField(null=True, blank=True)
+    del_courier = models.IntegerField(null=True, blank=True)
     is_deleted = models.BooleanField(default=False)
 
     class Meta:
@@ -97,6 +101,7 @@ class B2CStep(models.Model):
     step = models.IntegerField(default=0)
     is_self = models.BooleanField(default=True)
     is_safe = models.BooleanField(default=False)
+    come_back = models.BooleanField(default=False)
     delete_message = models.IntegerField(null=True, blank=True)
 
     class Meta:
@@ -116,6 +121,7 @@ class B2CPrice(models.Model):
     price5 = models.IntegerField(null=True, blank=True, verbose_name="Цена (12-15Кг)")
     price6 = models.IntegerField(null=True, blank=True, verbose_name="Цена (12 Кг ->)")
     percent = models.IntegerField(null=True, blank=True, verbose_name="Процент (%)")
+    price_come_back = models.IntegerField(null=True, blank=True, verbose_name="Цена Обратно")
 
     class Meta:
         ordering = ["id"]

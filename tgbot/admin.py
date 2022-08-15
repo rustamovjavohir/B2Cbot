@@ -16,7 +16,7 @@ from .resources import B2COrderResource, B2CUserResource
 class B2COrderAdmin(ImportExportActionModelAdmin, ImportExportModelAdmin):
     list_display = ["id", "order_name", "weight", "price", "status", "from_location", "sender_name", "sender_phone",
                     "to_location",
-                    "recipient_name", "recipient_phone", "comment", "created_at"]
+                    "recipient_name", "recipient_phone", "come_back", "comment", "created_at"]
     list_editable = ["comment"]
     list_display_links = ["id", "order_name", "from_location"]
     list_filter = (("created_at", DateRangeFilter), "status")
@@ -70,9 +70,9 @@ class B2CUserAdmin(ImportExportActionModelAdmin, ImportExportModelAdmin):
 
 @admin.register(B2CPrice)
 class B2CPriceAdmin(admin.ModelAdmin):
-    list_display = ["id", "name_price_order", "price", "price1", "price2", "price3",
+    list_display = ["id", "name_price_order", "price_come_back", "price", "price1", "price2", "price3",
                     "price4", "price5", "price6", "percent"]
-    list_editable = ["name_price_order", "price", "price1", "price2", "price3",
+    list_editable = ["name_price_order", "price_come_back", "price", "price1", "price2", "price3",
                      "price4", "price5", "price6", "percent"]
 
 

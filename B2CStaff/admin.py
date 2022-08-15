@@ -8,7 +8,7 @@ admin.site.register(Dispatcher)
 
 @admin.register(Kuryer)
 class B2CKuryer(admin.ModelAdmin):
-    list_display = ["kuryer_telegram_id", "kuryer_name", "status" ,"inwork", "balance",
+    list_display = ["kuryer_telegram_id", "kuryer_name", "status", "inwork", "balance", "ball",
                     "payment_date"]
     # list_editable = ["balance", "payment_date"]
     list_display_links = ["kuryer_telegram_id", "kuryer_name"]

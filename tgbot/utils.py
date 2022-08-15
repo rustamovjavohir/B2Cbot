@@ -159,17 +159,21 @@ def order_text(lang_code: str, user_id):
             text += f"<strong>Комментарии: </strong>(необязательный)\n"
         else:
             text += f"<strong>Комментарии: </strong>{step.comment}\n"
+        if not step.come_back:
+            text += f"<strong>Обратно: </strong> ❌\n"
+        else:
+            text += f"<strong>Обратно: </strong> ✅\n"
         if step.price:
             text += f"<strong>Цена: </strong>{step.price} сум\n"
     else:
         if not step.order_name:
-            text += f"<strong>Mahsulot: </strong> (zarur)\n"
+            text += f"<strong>Buyum nomi: </strong> (zarur)\n"
         else:
-            text += f"<strong>Mahsulot: </strong>{step.order_name}\n"
+            text += f"<strong>Buyum nomi: </strong>{step.order_name}\n"
         if not step.weight:
-            text += f"<strong>Mahsulot og'irligi: </strong>(zarur)\n"
+            text += f"<strong>Buyum og'irligi: </strong>(zarur)\n"
         else:
-            text += f"<strong>Mahsulot og'irligi: </strong>{step.weight}\n"
+            text += f"<strong>Buyum og'irligi: </strong>{step.weight}\n"
         if not step.from_location:
             text += f"<strong>Qayerdan olish: </strong>(zarur)\n"
         else:
@@ -204,6 +208,10 @@ def order_text(lang_code: str, user_id):
             text += f"<strong>Izoh: </strong>(xohishiy)\n"
         else:
             text += f"<strong>Izoh: </strong>{step.comment}\n"
+        if not step.come_back:
+            text += f"<strong>Qaytib kelish: </strong> ❌\n"
+        else:
+            text += f"<strong>Qaytib kelish: </strong> ✅\n"
         if step.price:
             text += f"<strong>Narx: </strong>{step.price} сум\n"
     return text
@@ -213,6 +221,7 @@ def create_order(update: Update, context: CallbackContext):
     user_id = update.effective_user.id
     user = B2CUser.objects.get(telegram_id=user_id)
     step = B2CStep.objects.filter(created_by=user_id).first()
+    set_price(user_id, weight=step.weight, is_safe=step.is_safe)
     try:
         msg = update.message.text
     except Exception as ex:
@@ -248,8 +257,7 @@ def create_order(update: Update, context: CallbackContext):
             update.message.delete()
             msg = update.message.text
             if msg:
-                weight = [float(x) for x in re.findall(r'-?\d+\.?\d*', msg)]
-                set_price(user_id, weight=weight, is_safe=step.is_safe)
+                set_price(user_id, weight=msg, is_safe=step.is_safe)
                 B2CStep.objects.filter(created_by=user_id).update(weight=msg)
             text = order_text(user.lang, user_id)
             update.message.reply_html(text, disable_web_page_preview=True, reply_markup=inline(user.lang))
@@ -334,7 +342,7 @@ def create_order(update: Update, context: CallbackContext):
 
 
 def my_orders(lang_code, user_id):
-    orders = B2COrder.objects.filter(created_by=user_id, is_deleted=False)
+    orders = B2COrder.objects.filter(created_by=user_id, is_deleted=False).order_by('id')
     orders_list = []
     data, product, weight, order_from, name_sender, phone_sender, order_to, name_receiver, phone_receiver, comment, \
     status = "Дата", "Товар", "Вес товаров", "Откуда доставить", "Имя отправителя", "Номер телефон отправителя", \
@@ -386,6 +394,8 @@ def type_order_util(update, context):
         msg = context.bot.send_message(chat_id=user.telegram_id, text=order_type_text,
                                        reply_markup=type_order(user.lang))
         user.del_message = msg.message_id
+
+    #  -----------------
         user.save()
 
 
@@ -412,32 +422,34 @@ def user_profile(user_id):
     return text
 
 
-def set_price(user_id, weight: list, is_safe):
-    max_weight: float = max(weight)
-    if is_safe:
-        if max_weight <= 3:
-            pr = B2CPrice.objects.all()[1].price1
-        elif max_weight <= 6:
-            pr = B2CPrice.objects.all()[1].price2
-        elif max_weight <= 9:
-            pr = B2CPrice.objects.all()[1].price3
-        elif max_weight <= 12:
-            pr = B2CPrice.objects.all()[1].price4
-        elif max_weight <= 15:
-            pr = B2CPrice.objects.all()[1].price5
+def set_price(user_id, weight, is_safe):
+    if weight:
+        weight_list = [float(x) for x in re.findall(r'-?\d+\.?\d*', weight)]
+        max_weight: float = max(weight_list)
+        if is_safe:
+            if max_weight <= 3:
+                pr = B2CPrice.objects.all()[1].price1
+            elif max_weight <= 6:
+                pr = B2CPrice.objects.all()[1].price2
+            elif max_weight <= 9:
+                pr = B2CPrice.objects.all()[1].price3
+            elif max_weight <= 12:
+                pr = B2CPrice.objects.all()[1].price4
+            elif max_weight <= 15:
+                pr = B2CPrice.objects.all()[1].price5
+            else:
+                pr = B2CPrice.objects.all()[1].price6
         else:
-            pr = B2CPrice.objects.all()[1].price6
-    else:
-        if max_weight <= 3:
-            pr = B2CPrice.objects.all()[0].price1
-        elif max_weight <= 6:
-            pr = B2CPrice.objects.all()[0].price2
-        elif max_weight <= 9:
-            pr = B2CPrice.objects.all()[0].price3
-        elif max_weight <= 12:
-            pr = B2CPrice.objects.all()[0].price4
-        elif max_weight <= 15:
-            pr = B2CPrice.objects.all()[0].price5
-        else:
-            pr = B2CPrice.objects.all()[0].price6
-    B2CStep.objects.filter(created_by=user_id).update(price=pr)
+            if max_weight <= 3:
+                pr = B2CPrice.objects.all()[0].price1
+            elif max_weight <= 6:
+                pr = B2CPrice.objects.all()[0].price2
+            elif max_weight <= 9:
+                pr = B2CPrice.objects.all()[0].price3
+            elif max_weight <= 12:
+                pr = B2CPrice.objects.all()[0].price4
+            elif max_weight <= 15:
+                pr = B2CPrice.objects.all()[0].price5
+            else:
+                pr = B2CPrice.objects.all()[0].price6
+        B2CStep.objects.filter(created_by=user_id).update(price=pr)

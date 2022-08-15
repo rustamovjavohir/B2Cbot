@@ -12,6 +12,7 @@ class Kuryer(models.Model):
     status = models.CharField(max_length=250, null=True, blank=True, verbose_name="Статус")
     balance = models.IntegerField(null=True, blank=True, verbose_name="Баланс")
     payment_date = models.DateTimeField(null=True, blank=True, verbose_name="Дата выплаты")
+    ball = models.FloatField(default=5)
 
     def __str__(self):
         return self.kuryer_name

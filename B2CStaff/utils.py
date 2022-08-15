@@ -31,6 +31,10 @@ def inform(order):
         text += f"<strong>Номер телефон получателя: </strong>{order.recipient_phone}\n"
         if order.comment:
             text += f"<strong>Комментарии: </strong>{order.comment}\n"
+        if order.come_back:
+            text += f"<strong>Обратно: </strong> ✅\n"
+        else:
+            text += f"<strong>Обратно: </strong> ❌\n"
         if order.price:
             text += f"<strong>Цена: </strong>{order.price} сум\n"
         return text
@@ -38,8 +42,9 @@ def inform(order):
         print(ex)
 
 
-def kuryer_text(kuryer):
+def kuryer_text(kuryer, order_name, order_status):
     text = ""
     text += f"<strong>Курер: </strong>{kuryer.kuryer_name} \n" \
-            f"<strong>Телеграм ид: </strong>{kuryer.kuryer_telegram_id}\n"
+            f"<strong>Товар: </strong>{order_name}\n" \
+            f"<strong>Статус: </strong>{order_status}\n"
     return text

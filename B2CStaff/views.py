@@ -4,7 +4,7 @@ from telegram import Update, Bot
 from telegram.ext import CallbackContext
 
 from B2CStaff.keyboards import start_button_kuryer, get_order_button, courier_start_work_button, \
-    courier_finished_work_button, accept_order
+    courier_finished_work_button, accept_order, review_list_button, come_back_button
 from B2CStaff.models import Kuryer_step, Dispatcher, Kuryer
 from B2CStaff.utils import is_kuryer, is_disp, inform
 from tgbot.models import B2COrder, B2CCommandText, B2CUser
@@ -110,16 +110,16 @@ def kuryer_handler(update: Update, context: CallbackContext):
     elif k_step.step == 4:
         if photo:
             B2COrder.objects.filter(pk=k_step.obj).update(before_image=photo[-1].file_id)
-            obj = B2COrder.objects.get(pk=k_step.obj)
+            order = B2COrder.objects.get(pk=k_step.obj)
             update.message.delete()
 
-            update.message.reply_photo(photo=obj.before_image, caption=inform(obj),
-                                       reply_markup=get_order_button(order_id=obj.id), parse_mode="HTML",
+            update.message.reply_photo(photo=order.before_image, caption=inform(order),
+                                       reply_markup=get_order_button(order_id=order.id), parse_mode="HTML",
                                        )
             for dispatcher in dispatchers:
                 context.bot.send_photo(chat_id=dispatcher.dispatcher_telegram_id,
-                                       photo=obj.before_image, parse_mode="HTML",
-                                       caption=f"✅№{obj.id} Курьер получил заказ \nТовар: {obj.order_name}")
+                                       photo=order.before_image, parse_mode="HTML",
+                                       caption=f"✅№{order.id} Курьер получил заказ \nТовар: {order.order_name}")
 
             Kuryer_step.objects.filter(admin_id=user_id).update(step=0)
         else:
@@ -128,25 +128,34 @@ def kuryer_handler(update: Update, context: CallbackContext):
 
     elif k_step.step == 7:
         if photo:
-            B2COrder.objects.filter(pk=k_step.obj).update(after_image=photo[-1].file_id,
-                                                          status=B2COrder.StatusOrder.COMPLETED)
-            obj = B2COrder.objects.get(pk=k_step.obj)
+            B2COrder.objects.filter(pk=k_step.obj).update(after_image=photo[-1].file_id)
+            order = B2COrder.objects.get(pk=k_step.obj)
             update.message.delete()
 
-            update.message.reply_photo(photo=obj.before_image)
-            update.message.reply_photo(photo=obj.after_image, caption=inform(obj), parse_mode="HTML",
+            update.message.reply_photo(photo=order.before_image)
+            update.message.reply_photo(photo=order.after_image, caption=inform(order), parse_mode="HTML",
                                        )
-            file_path2 = context.bot.getFile(obj.after_image).file_path
+            file_path2 = context.bot.getFile(order.after_image).file_path
             response = requests.get(file_path2)
 
-            order_owner = B2CUser.objects.get(telegram_id=obj.created_by)
+            order_owner = B2CUser.objects.get(telegram_id=order.created_by)
             order_has_been_delivered = B2CCommandText.objects.get(text_code=35, lang_code=order_owner.lang).text
-            order = "Товар" if order_owner.lang.__eq__("ru") else "Mahsulot"
-            b2cbot.send_photo(chat_id=obj.created_by,
-                              photo=response.content, parse_mode="HTML",
-                              caption=f"✅№ {obj.id} {order_has_been_delivered}\n{order}: {obj.order_name}")
+            order_text = "Товар" if order_owner.lang.__eq__("ru") else "Mahsulot"
 
-            Kuryer_step.objects.filter(admin_id=user_id).update(step=0)
+            if order.come_back:
+                context.bot.send_message(chat_id=k_step.admin_id, text=inform(order), parse_mode="HTML",
+                                         reply_markup=come_back_button(order_id=order.id))
+                b2cbot.send_photo(chat_id=order.created_by,
+                                  photo=response.content, parse_mode="HTML",
+                                  caption=f"✅№ {order.id} {order_has_been_delivered}\n{order_text}: {order.order_name}")
+            else:
+                order.status = B2COrder.StatusOrder.COMPLETED
+                order.save()
+                b2cbot.send_photo(chat_id=order.created_by,
+                                  photo=response.content, parse_mode="HTML",
+                                  caption=f"✅№ {order.id} {order_has_been_delivered}\n{order_text}: {order.order_name}",
+                                  reply_markup=review_list_button())
+                Kuryer_step.objects.filter(admin_id=user_id).update(step=0)
         else:
             update.message.delete()
             update.message.reply_text("❗️❗️❗️🤨  Только фото")

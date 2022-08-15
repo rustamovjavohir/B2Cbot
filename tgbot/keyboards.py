@@ -21,20 +21,22 @@ def inline(lang_code: str):
             [InlineKeyboardButton("Куда доставить", callback_data="to"),
              InlineKeyboardButton("Имя получателя", callback_data="recipient_name"),
              InlineKeyboardButton("Номер получателя", callback_data="recipient_phone")],
-            [InlineKeyboardButton("Комментарии", callback_data="comment")],
+            [InlineKeyboardButton("Комментарии", callback_data="comment"),
+             InlineKeyboardButton("Обратно", callback_data="come_back")],
             [InlineKeyboardButton("📤Отправить", callback_data="send"),
              InlineKeyboardButton("🏠Главная страница", callback_data="home")]]
     else:
         button = [
-            [InlineKeyboardButton("Mahsulot", callback_data="model"),
-             InlineKeyboardButton("Mahsulot og'irligi", callback_data="weight")],
+            [InlineKeyboardButton("Buyum nomi", callback_data="model"),
+             InlineKeyboardButton("Buyum og'irligi", callback_data="weight")],
             [InlineKeyboardButton("Qayerdan olish", callback_data="from"),
              InlineKeyboardButton("Yuboruvchining ismi", callback_data="sender_name"),
              InlineKeyboardButton("Yuboruvchining nomeri", callback_data="sender_phone")],
             [InlineKeyboardButton("Qayerga yetkazish", callback_data="to"),
              InlineKeyboardButton("Qabul qiluvchining ismi", callback_data="recipient_name"),
              InlineKeyboardButton("Qabul qiluvchining nomeri", callback_data="recipient_phone")],
-            [InlineKeyboardButton("Izoh", callback_data="comment")],
+            [InlineKeyboardButton("Izoh", callback_data="comment"),
+             InlineKeyboardButton("Qaytib kelish", callback_data="come_back")],
             [InlineKeyboardButton("📤Jo'natish", callback_data="send"),
              InlineKeyboardButton("🏠Bosh sahifa", callback_data="home")]]
     return InlineKeyboardMarkup(button)
@@ -152,13 +154,24 @@ def locations_button(lang_code):
 def change_profile(lang_code):
     edit_name_text = B2CCommandText.objects.get(text_code=15, lang_code=lang_code).text
     edit_phone_text = B2CCommandText.objects.get(text_code=16, lang_code=lang_code).text
+    edit_lang_text = B2CCommandText.objects.get(text_code=38, lang_code=lang_code).text
     home_text = B2CCommandText.objects.get(text_code=17, lang_code=lang_code).text
     button = [
         [InlineKeyboardButton(edit_name_text, callback_data="profile_change_name"),
-         InlineKeyboardButton(edit_phone_text, callback_data="profile_change_phone"), ],
+         InlineKeyboardButton(edit_lang_text, callback_data="profile_change_lang"), ],
+        [InlineKeyboardButton(edit_phone_text, callback_data="profile_chang_phone"), ],
         [InlineKeyboardButton(home_text, callback_data="home")]
 
     ]
+    return InlineKeyboardMarkup(button)
+
+
+def change_profile_language():
+    button = [
+        [InlineKeyboardButton("uz", callback_data="lang-change-uz"),
+         InlineKeyboardButton("ru", callback_data="lang-change-ru")]
+    ]
+
     return InlineKeyboardMarkup(button)
 
 
@@ -169,4 +182,14 @@ def del_order_inline_button(lang_code):
         [InlineKeyboardButton(delete_text, callback_data="order_del"),
          InlineKeyboardButton(close_text, callback_data="order_close")]
     ]
+    return InlineKeyboardMarkup(button)
+
+
+def apply_get(order_id):
+    button = [
+        [
+            InlineKeyboardButton("Tasdiqlash", callback_data=f"{order_id}-apply_get_product")
+        ]
+    ]
+
     return InlineKeyboardMarkup(button)

@@ -131,7 +131,9 @@ def main_handler(update: Update, context: CallbackContext):
             context.bot.send_message(chat_id=user_id, text=text, parse_mode="HTML",
                                      reply_markup=change_profile(user.lang))
         elif user.step == 7:
-            context.bot.send_message(chat_id=user_id, text='Номер например (+998 93 123 45 67): ',
+            tex = B2CCommandText.objects.filter(text_code=1, lang_code=user.lang).first().text
+            text = command_line(tex)
+            context.bot.send_message(chat_id=user_id, text=text,
                                      reply_markup=phone_keyboard(user.lang))
 
 
