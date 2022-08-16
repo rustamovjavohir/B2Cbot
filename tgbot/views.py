@@ -1,5 +1,5 @@
 # Create your views here.
-import logging
+
 import re
 
 from telegram import Update
@@ -10,8 +10,6 @@ from tgbot.keyboards import language_inline_button, phone_keyboard, sing_up_appl
 from tgbot.models import B2CUser, B2CCommandText, B2CStep
 from tgbot.utils import command_line, user_update, phone_wrong, wrong_full_name, wrong_data_birthday, create_order, \
     my_orders, user_profile
-
-logging.getLogger('file')
 
 
 def start(update: Update, context: CallbackContext):
