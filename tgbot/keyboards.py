@@ -2,12 +2,21 @@ from telegram import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardButton, 
 
 from tgbot.models import B2CCommandText
 
-language_inline_button = InlineKeyboardMarkup(
-    [
+
+# language_inline_button = InlineKeyboardMarkup(
+#     [
+#         [InlineKeyboardButton("uz", callback_data="lang-uz"), InlineKeyboardButton("ru", callback_data="lang-ru")]
+#     ]
+#
+# )
+
+
+def language_inline_button():
+    button = [
         [InlineKeyboardButton("uz", callback_data="lang-uz"), InlineKeyboardButton("ru", callback_data="lang-ru")]
     ]
 
-)
+    return InlineKeyboardMarkup(button)
 
 
 def inline(lang_code: str):
@@ -112,6 +121,16 @@ def phone_keyboard(lang_code):
     )
 
 
+def locations_button(lang_code):
+    back_text = B2CCommandText.objects.filter(text_code=4, lang_code=lang_code).first().text
+    location_text = B2CCommandText.objects.filter(text_code=33, lang_code=lang_code).first().text
+    return ReplyKeyboardMarkup(
+        [[KeyboardButton(back_text),
+          KeyboardButton(location_text, request_location=True)]],
+        one_time_keyboard=True, resize_keyboard=True
+    )
+
+
 def sing_up_apply_markup(lang_code):
     back_text = B2CCommandText.objects.filter(text_code=4, lang_code=lang_code).first().text
     apply_text = B2CCommandText.objects.filter(text_code=7, lang_code=lang_code).first().text
@@ -134,21 +153,12 @@ def apply_button(lang_code):
 
 def weight_type_button(lang_code):
     back_text = B2CCommandText.objects.filter(text_code=4, lang_code=lang_code).first().text
-    return ReplyKeyboardMarkup([[KeyboardButton("0,1 - 3 Кг"), KeyboardButton("3,1 - 6 Кг"), KeyboardButton("6,1 - 9 Кг")],
-                                [KeyboardButton("9,1 - 12 Кг"), KeyboardButton("12,1 - 15 Кг"),
-                                 KeyboardButton("15,1 Кг ->")],
-                                [KeyboardButton(back_text)]],
-                               one_time_keyboard=True, resize_keyboard=True)
-
-
-def locations_button(lang_code):
-    back_text = B2CCommandText.objects.filter(text_code=4, lang_code=lang_code).first().text
-    location_text = B2CCommandText.objects.filter(text_code=33, lang_code=lang_code).first().text
     return ReplyKeyboardMarkup(
-        [[KeyboardButton(back_text),
-          KeyboardButton(location_text, request_location=True)]],
-        one_time_keyboard=True, resize_keyboard=True
-    )
+        [[KeyboardButton("0,1 - 3 Кг"), KeyboardButton("3,1 - 6 Кг"), KeyboardButton("6,1 - 9 Кг")],
+         [KeyboardButton("9,1 - 12 Кг"), KeyboardButton("12,1 - 15 Кг"),
+          KeyboardButton("15,1 Кг ->")],
+         [KeyboardButton(back_text)]],
+        one_time_keyboard=True, resize_keyboard=True)
 
 
 def change_profile(lang_code):

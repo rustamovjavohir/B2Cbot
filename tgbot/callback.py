@@ -5,9 +5,10 @@ from telegram.ext import CallbackContext
 
 from B2CStaff.keyboards import review_list_button
 from tgbot.keyboards import phone_keyboard, weight_type_button, locations_button, back_markup, order_markup, \
-    inline, apply_button, change_profile_language, change_profile, apply_get
+    inline, apply_button, change_profile_language, change_profile, apply_get, sing_up_apply_markup
 from tgbot.models import B2CUser, B2CCommandText, B2CStep, B2COrder, B2CPrice
-from tgbot.utils import command_line, order_text, type_order_util, create_order, user_profile
+from tgbot.utils import command_line, order_text, type_order_util, create_order, user_profile, \
+    create_order_by_conversation, go_create_order_by_conversation
 from tgbot.views import main_handler
 
 
@@ -29,7 +30,7 @@ def keyboard_callback(update: Update, context: CallbackContext):
                 phone_text = B2CCommandText.objects.filter(text_code=3, lang_code=lang).first().text
                 update.callback_query.delete_message()
                 B2CUser.objects.filter(telegram_id=user_id).update(lang=lang, step=1)
-                context.bot.send_message(chat_id=user_id, text="Оферта", reply_markup=apply_button(lang_code=lang))
+                context.bot.send_message(chat_id=user_id, text=phone_text, reply_markup=phone_keyboard(lang_code=lang))
         except Exception as ex:
             print(ex, "lang")
     elif query_data[0].__eq__('profile_change_name'):
@@ -60,21 +61,19 @@ def keyboard_callback(update: Update, context: CallbackContext):
     elif query_data[0].__eq__('simple_delivery'):
         try:
             update.callback_query.message.delete()
-            B2CStep.objects.filter(created_by=user_id).update(step=1, is_safe=False)
-            B2CStep.objects.filter(created_by=user_id).update(step=2, sender_name=user.first_name,
+            B2CStep.objects.filter(created_by=user_id).update(is_safe=False, sender_name=user.first_name,
                                                               from_location=user.address,
-                                                              sender_phone=user.phone_number, is_self=True)
-            create_order(update, context)
+                                                              sender_phone=user.phone_number)
+            go_create_order_by_conversation(update, context)
         except Exception as ex:
             print(ex, "-simple_delivery")
     elif query_data[0].__eq__('safe_delivery'):
         try:
             update.callback_query.message.delete()
-            B2CStep.objects.filter(created_by=user_id).update(step=1, is_safe=True)
-            B2CStep.objects.filter(created_by=user_id).update(step=2, sender_name=user.first_name,
+            B2CStep.objects.filter(created_by=user_id).update(step=2, is_safe=True, sender_name=user.first_name,
                                                               from_location=user.address,
                                                               sender_phone=user.phone_number)
-            create_order(update, context)
+            go_create_order_by_conversation(update, context)
         except Exception as ex:
             print(ex, "- safe_delivery")
     elif query_data[0].__eq__('model'):
@@ -166,7 +165,8 @@ def keyboard_callback(update: Update, context: CallbackContext):
             B2COrder(order_name=step.order_name, weight=step.weight, sender_name=step.sender_name,
                      sender_phone=step.sender_phone, from_location=step.from_location, to_location=step.to_location,
                      recipient_name=step.recipient_name, recipient_phone=step.recipient_phone, comment=step.comment,
-                     created_by=step.created_by, price=step.price, is_safe=step.is_safe, come_back=step.come_back).save()
+                     created_by=step.created_by, price=step.price, is_safe=step.is_safe,
+                     come_back=step.come_back).save()
             B2CUser.objects.filter(telegram_id=user_id).update(address=step.from_location)
             step.delete()
             context.bot.send_message(chat_id=user_id, text=text, parse_mode='HTML',

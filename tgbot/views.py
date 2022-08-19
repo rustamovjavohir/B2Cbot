@@ -6,10 +6,10 @@ from telegram import Update
 from telegram.ext import CallbackContext
 
 from tgbot.keyboards import language_inline_button, phone_keyboard, sing_up_apply_markup, type_delivery, \
-    order_markup, change_profile, back_markup, del_order_inline_button
+    order_markup, change_profile, back_markup, del_order_inline_button, apply_button
 from tgbot.models import B2CUser, B2CCommandText, B2CStep
 from tgbot.utils import command_line, user_update, phone_wrong, wrong_full_name, wrong_data_birthday, create_order, \
-    my_orders, user_profile
+    my_orders, user_profile, create_order_by_conversation
 
 
 def start(update: Update, context: CallbackContext):
@@ -29,7 +29,7 @@ def start(update: Update, context: CallbackContext):
         user.save()
         update.message.reply_text(f"Xush Kelibsiz"
                                   f"\nO'zingizga qulay tilni tanlang!\n-----"
-                                  f"\nВыберите удобный Вам язык!", reply_markup=language_inline_button)
+                                  f"\nВыберите удобный Вам язык!", reply_markup=language_inline_button())
     else:
         action_text = B2CCommandText.objects.get(text_code=13, lang_code=user.lang).text
         message = update.message.reply_text(action_text, reply_markup=order_markup(user.lang))
@@ -75,26 +75,21 @@ def main_handler(update: Update, context: CallbackContext):
             for item in numbers:
                 data_birthday += str(item.__ceil__()) + "-"
             user = user_update(user_id, 'data_birthday', data_birthday[:-1], step=4)
-            if user.lang.__eq__('uz'):
-                text = f"<strong>Ma'lumotlaringiz saqlandi</strong>" \
-                       f"\n<strong>Ma'lumotlaringiz:</strong>" \
-                       f"\n<strong>Ismingiz : </strong>{user.first_name}" \
-                       f"\n<strong>Telefon nomeringiz : </strong>{user.phone_number}" \
-                       f"\n<strong>Tu'g'ilgan sanangiz : </strong>{user.data_birthday}"
-            else:
-                text = f"<strong>Ваша информация сохранена</strong>" \
-                       f"\n<strong>Ваша информация:</strong>" \
-                       f"\n<strong>Ваше имя : </strong>{user.first_name}" \
-                       f"\n<strong>Ваш номер телефона : </strong>{user.phone_number}" \
-                       f"\n<strong>Твоя дата рождения : </strong>{user.data_birthday}"
+            text = user_profile(user_id)
+            update.message.reply_text(text=text, reply_markup=sing_up_apply_markup(user.lang), parse_mode="HTML")
+        elif user.step == 4:
+            text = user_profile(user_id)
             update.message.reply_text(text=text, reply_markup=sing_up_apply_markup(user.lang), parse_mode="HTML")
         elif user.step == 5:
+            update.message.reply_text("Оферта", reply_markup=apply_button(user.lang))
+
+        elif user.step == 6:
             msg = update.message.text
             chat_data = context.chat_data.get("profile", None)
             create_order_text = B2CCommandText.objects.filter(text_code=8)
-            history_text = B2CCommandText.objects.filter(text_code=11)
             price_text = B2CCommandText.objects.filter(text_code=9)
             support_text = B2CCommandText.objects.filter(text_code=10)
+            history_text = B2CCommandText.objects.filter(text_code=11)
             profile_text = B2CCommandText.objects.filter(text_code=12)
             if msg in [item.text for item in create_order_text]:
                 step.step = 1
@@ -120,19 +115,41 @@ def main_handler(update: Update, context: CallbackContext):
             elif msg in [item.text for item in support_text]:
                 text = B2CCommandText.objects.get(text_code=14, lang_code=user.lang).text
                 update.message.reply_text(text=text, reply_markup=order_markup(user.lang))
-            else:
+            elif step.step < 20:
                 create_order(update, context)
-        elif user.step == 6:
+            else:
+                create_order_by_conversation(update, context)
+
+        elif user.step == 7:
             msg = update.message.text
             user = user_update(user_id, 'first_name', msg, step=5)
             text = user_profile(user_id)
             context.bot.send_message(chat_id=user_id, text=text, parse_mode="HTML",
                                      reply_markup=change_profile(user.lang))
-        elif user.step == 7:
-            tex = B2CCommandText.objects.filter(text_code=1, lang_code=user.lang).first().text
-            text = command_line(tex)
+        elif user.step == 8:
+            number_tex = B2CCommandText.objects.filter(text_code=1, lang_code=user.lang).first().text
+            text = command_line(number_tex)
             context.bot.send_message(chat_id=user_id, text=text,
                                      reply_markup=phone_keyboard(user.lang))
+
+
+def accept(update: Update, context: CallbackContext):
+    user_id = update.effective_user.id
+    user = B2CUser.objects.get(telegram_id=user_id)
+    if user.step.__le__(5):
+        message = update.message.reply_text("Оферта", reply_markup=apply_button(user.lang))
+        B2CUser.objects.filter(telegram_id=user_id).update(step=5, del_message=message.message_id)
+    else:
+        B2CStep.objects.filter(created_by=user_id).update(step=21)
+        create_order_by_conversation(update, context)
+
+
+def apply(update: Update, context: CallbackContext):
+    user_id = update.effective_user.id
+    user = B2CUser.objects.get(telegram_id=user_id)
+    action_text = B2CCommandText.objects.get(text_code=13, lang_code=user.lang).text
+    message = update.message.reply_text(action_text, reply_markup=order_markup(user.lang))
+    B2CUser.objects.filter(telegram_id=user_id).update(is_active=True, step=6, del_message=message.message_id)
 
 
 def back(update: Update, context: CallbackContext):
@@ -152,62 +169,96 @@ def back(update: Update, context: CallbackContext):
         user.save()
         return wrong_data_birthday(update, context)
     elif user.step == 5:
+        user.step = 4
+        user.save()
+        return main_handler(update, context)
+    elif user.step == 6:
         step, created = B2CStep.objects.get_or_create(created_by=user_id)
-        if step.step == 1:
-            step.step = 0
-            step.save()
-            start(update, context)
-        elif step.step == 2:
-            step.step = 1
+        if step.step.__le__(12):
+            step.step -= 1
             step.save()
             create_order(update, context)
-        elif step.step == 3:
-            step.step = 2
+        # if step.step == 1:
+        #     step.step = 0
+        #     step.save()
+        #     start(update, context)
+        # elif step.step == 2:
+        #     step.step = 1
+        #     step.save()
+        #     create_order(update, context)
+        # elif step.step == 3:
+        #     step.step = 2
+        #     step.save()
+        #     create_order(update, context)
+        # elif step.step == 4:
+        #     step.step = 3
+        #     step.save()
+        #     create_order(update, context)
+        # elif step.step == 5:
+        #     step.step = 4
+        #     step.save()
+        #     create_order(update, context)
+        # elif step.step == 6:
+        #     step.step = 5
+        #     step.save()
+        #     create_order(update, context)
+        # elif step.step == 7:
+        #     step.step = 6
+        #     step.save()
+        #     create_order(update, context)
+        # elif step.step == 8:
+        #     step.step = 7
+        #     step.save()
+        #     create_order(update, context)
+        # elif step.step == 9:
+        #     step.step = 8
+        #     step.save()
+        #     create_order(update, context)
+        # elif step.step == 10:
+        #     step.step = 9
+        #     step.save()
+        #     create_order(update, context)
+        # elif step.step == 11:
+        #     step.step = 10
+        #     step.save()
+        #     create_order(update, context)
+        elif step.step == 22:
+            step.step = 21
             step.save()
-            create_order(update, context)
-        elif step.step == 4:
-            step.step = 3
+            create_order_by_conversation(update, context)
+        elif step.step == 23:
+            step.step = 21
             step.save()
-            create_order(update, context)
-        elif step.step == 5:
-            step.step = 4
+            create_order_by_conversation(update, context)
+        elif step.step == 24:
+            step.step = 22
             step.save()
-            create_order(update, context)
-        elif step.step == 6:
-            step.step = 5
+            create_order_by_conversation(update, context)
+        elif step.step == 25:
+            step.step = 23
             step.save()
-            create_order(update, context)
-        elif step.step == 7:
-            step.step = 6
+            create_order_by_conversation(update, context)
+        elif step.step == 26:
+            step.step = 24
             step.save()
-            create_order(update, context)
-        elif step.step == 8:
-            step.step = 7
+            create_order_by_conversation(update, context)
+        elif step.step == 27:
+            step.step = 25
             step.save()
-            create_order(update, context)
-        elif step.step == 9:
-            step.step = 8
+            create_order_by_conversation(update, context)
+        elif step.step == 28:
+            step.step = 26
             step.save()
-            create_order(update, context)
-        elif step.step == 10:
-            step.step = 9
+            create_order_by_conversation(update, context)
+        elif step.step == 29:
+            step.step = 27
             step.save()
-            create_order(update, context)
-        elif step.step == 11:
-            step.step = 10
-            step.save()
-            create_order(update, context)
-
-    elif user.step == 7:
-        user.step = 5
+            create_order_by_conversation(update, context)
+    elif user.step == 8:
+        user.step = 6
         user.save()
         context.chat_data['profile'] = 'profile'
         main_handler(update, context)
 
 
-def apply(update: Update, context: CallbackContext):
-    user_id = update.effective_user.id
-    user = B2CUser.objects.get(telegram_id=user_id)
-    action_text = B2CCommandText.objects.get(text_code=13, lang_code=user.lang).text
-    message = update.message.reply_text(action_text, reply_markup=order_markup(user.lang))
-    B2CUser.objects.filter(telegram_id=user_id).update(is_active=True, step=5, del_message=message.message_id)
+

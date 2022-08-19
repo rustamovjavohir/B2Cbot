@@ -1,10 +1,11 @@
 import re
 
 import pytz
-from telegram import (Update)
+from telegram import (Update, ReplyKeyboardRemove)
 from telegram.ext import CallbackContext
 
-from .keyboards import phone_keyboard, back_markup, inline, type_order, change_profile
+from .keyboards import phone_keyboard, back_markup, inline, type_order, change_profile, weight_type_button, \
+    locations_button, sing_up_apply_markup
 from .models import B2CUser, B2CCommandText, B2CStep, B2COrder, B2CPrice
 
 
@@ -22,6 +23,7 @@ def phone_wrong(update: Update, context: CallbackContext):
 
 def user_update(user_id, user_filed, update_text, step=0):
     commands = ["🔙Ortga", "sign up"]
+    # -----------------------------------------------------------------
     if update_text not in commands:
         user = B2CUser.objects.filter(telegram_id=user_id).first()
         setattr(user, user_filed, update_text)
@@ -40,9 +42,12 @@ def phone_contact_handler(update: Update, context: CallbackContext):
         tex = B2CCommandText.objects.filter(text_code=2, lang_code=user.lang).first().text
         text = command_line(tex)
         update.message.reply_text(text=text, reply_markup=back_markup(user.lang))
-    elif user.step == 5:
-        create_order(update, context)
-    elif user.step == 7:
+    elif user.step == 6:
+        if step.step == 26:
+            create_order_by_conversation(update, context)
+        else:
+            create_order(update, context)
+    elif user.step == 8:
         user = user_update(user_id, 'phone_number', contact.phone_number, step=5)
         text = user_profile(user_id)
         context.bot.send_message(chat_id=user_id, text=text, parse_mode="HTML", reply_markup=change_profile(user.lang))
@@ -59,9 +64,12 @@ def phone_entity_handler(update: Update, context: CallbackContext):
         tex = B2CCommandText.objects.filter(text_code=2, lang_code=user.lang).first().text
         text = command_line(tex)
         update.message.reply_text(text=text, reply_markup=back_markup(user.lang))
-    elif user.step == 5:
-        create_order(update, context)
-    elif user.step == 7:
+    elif user.step == 6:
+        if step.step == 26:
+            create_order_by_conversation(update, context)
+        else:
+            create_order(update, context)
+    elif user.step == 8:
         user = user_update(user_id, 'phone_number', phone_number, step=5)
         text = user_profile(user_id)
         context.bot.send_message(chat_id=user_id, text=text, parse_mode="HTML", reply_markup=change_profile(user.lang))
@@ -70,7 +78,7 @@ def phone_entity_handler(update: Update, context: CallbackContext):
 def get_locations(update: Update, context: CallbackContext):
     user_id = update.effective_user.id
     user = B2CUser.objects.filter(telegram_id=user_id).first()
-    if user.step == 5:
+    if user.step == 6:
         user_location = update.message.location
         step = B2CStep.objects.filter(created_by=user_id).first()
         location = f"https://yandex.ru/maps/?pt={user_location.longitude},{user_location.latitude}&z=18&l=map"
@@ -82,6 +90,12 @@ def get_locations(update: Update, context: CallbackContext):
             step.to_location = location
             step.save()
             create_order(update, context)
+        elif step.step == 21:
+            B2CStep.objects.filter(created_by=user_id).update(from_location=location)
+            create_order_by_conversation(update, context)
+        elif step.step == 24:
+            B2CStep.objects.filter(created_by=user_id).update(to_location=location)
+            create_order_by_conversation(update, context)
 
 
 def wrong_full_name(update: Update, context: CallbackContext):
@@ -165,6 +179,8 @@ def order_text(lang_code: str, user_id):
             text += f"<strong>Обратно: </strong> ✅\n"
         if step.price:
             text += f"<strong>Цена: </strong>{step.price} сум\n"
+        text += "Если всё правилно нажмите '📤Отправить'\n" \
+                "Иначе отредактируйте"
     else:
         if not step.order_name:
             text += f"<strong>Buyum nomi: </strong> (zarur)\n"
@@ -214,6 +230,8 @@ def order_text(lang_code: str, user_id):
             text += f"<strong>Qaytib kelish: </strong> ✅\n"
         if step.price:
             text += f"<strong>Narx: </strong>{step.price} сум\n"
+        text += "Ma'lumotlar to'g'ri bo'lsa '📤Jo'natish' tugmasini bosing\n" \
+                "Aks holda tahrirlang"
     return text
 
 
@@ -382,6 +400,10 @@ def is_back(msg) -> bool:
     return msg in ["🔙Ortga", "🔙Назад", "🔙Back"]
 
 
+def is_apply(msg) -> bool:
+    return msg in ["✅Подтверждение", "✅Tasdiqlash"]
+
+
 def type_order_util(update, context):
     user_id = update.effective_user.id
     step = B2CStep.objects.filter(created_by=user_id).first()
@@ -395,30 +417,36 @@ def type_order_util(update, context):
                                        reply_markup=type_order(user.lang))
         user.del_message = msg.message_id
 
-    #  -----------------
+        #  -----------------
         user.save()
 
 
 def user_profile(user_id):
     user = B2CUser.objects.get(telegram_id=user_id)
     if user.lang.__eq__("ru"):
-        text = f"Имя: {user.first_name}\n" \
-               f"Телефон номер: {user.phone_number}\n"
+        text = f"\n<strong>Ваша информация:</strong>"
+        text += f"\n<strong>Ваше имя : </strong>{user.first_name}" \
+                f"\n<strong>Ваш номер телефона : </strong>{user.phone_number}"
         if user.address:
             if "https" in user.address[:10]:
-                text += f"<a href='{user.address}'> Локатсия</a>\n"
+                text += f"\n<strong>Адрес: </strong><a href='{user.address}'> Локатсия</a>"
             else:
-                text += f"Адрес: {user.address}\n"
-        text += f"Язык: {user.lang}"
+                text += f"\n<strong>Адрес: </strong>{user.address}"
+        text += f"\n<strong>Твоя дата рождения : </strong>{user.data_birthday}" \
+                f"\n<strong>Язык: </strong>{user.lang}"
+
     else:
-        text = f"Ism: {user.first_name}\n" \
-               f"Telefon nomer: {user.phone_number}\n"
+        text = f"<strong>Ma'lumotlaringiz</strong>"
+        text += f"\n<strong>Ism: </strong>{user.first_name}" \
+                f"\n<strong>Telefon nomeringiz : </strong>{user.phone_number}"
         if user.address:
             if "https" in user.address[:10]:
-                text += f"<a href='{user.address}'> Локатсия</a>\n"
+                text += f"\n<strong>Manzil: </strong><a href='{user.address}'> Locatsiya</a>"
             else:
-                text += f"Manzil: {user.address}\n"
-        text += f"Til: {user.lang}"
+                text += f"\n<strong>Manzil: </strong>{user.address}"
+        text += f"\n<strong>Tu'g'ilgan sanangiz : </strong>{user.data_birthday}" \
+                f"\n<strong>Til: </strong>{user.lang}"
+
     return text
 
 
@@ -453,3 +481,77 @@ def set_price(user_id, weight, is_safe):
             else:
                 pr = B2CPrice.objects.all()[0].price6
         B2CStep.objects.filter(created_by=user_id).update(price=pr)
+
+
+def go_create_order_by_conversation(update: Update, context: CallbackContext):
+    user_id = update.effective_user.id
+    user = B2CUser.objects.get(telegram_id=user_id)
+    if user.address:
+        user_data = user_profile(user_id)
+        context.bot.send_message(chat_id=user_id, text=user_data, reply_markup=sing_up_apply_markup(user.lang),
+                                 parse_mode="HTML")
+    else:
+        B2CStep.objects.filter(created_by=user_id).update(step=21)
+        order_from_text = B2CCommandText.objects.filter(text_code=26, lang_code=user.lang).first().text
+        context.bot.send_message(chat_id=user_id, text=order_from_text,
+                                 reply_markup=locations_button(user.lang))
+
+
+def create_order_by_conversation(update: Update, context: CallbackContext):
+    user_id = update.effective_user.id
+    user = B2CUser.objects.get(telegram_id=user_id)
+    step = B2CStep.objects.get(created_by=user_id)
+    msg = update.message.text
+    if step.step.__eq__(21):
+        step.step = 22
+        step.save()
+        if msg and not is_back(msg) and not is_apply(msg):
+            B2CStep.objects.filter(created_by=user_id).update(from_location=msg)
+        order_name_text = B2CCommandText.objects.get(text_code=24, lang_code=user.lang).text
+        #  Mahsulot nomini kiriting
+        context.bot.send_message(chat_id=user_id, text=order_name_text, reply_markup=back_markup(user.lang))
+    elif step.step.__eq__(22):
+        step.step = 23
+        step.save()
+        if not is_back(msg):
+            B2CStep.objects.filter(created_by=user_id).update(order_name=msg)
+        order_weight_text = B2CCommandText.objects.get(text_code=25, lang_code=user.lang).text
+        # Mahsulot vaznini tanlang (kg)⤵️
+        context.bot.send_message(chat_id=user_id, text=order_weight_text, reply_markup=weight_type_button(user.lang))
+    elif step.step.__eq__(23):
+        step.step = 24
+        step.save()
+        if not is_back(msg):
+            set_price(user_id, weight=msg, is_safe=step.is_safe)
+            B2CStep.objects.filter(created_by=user_id).update(weight=msg)
+        to_location_text = B2CCommandText.objects.get(text_code=29, lang_code=user.lang).text
+        # Qayerga yetkazib berish, manzilni yuboring
+        context.bot.send_message(chat_id=user_id, text=to_location_text, reply_markup=locations_button(user.lang))
+    elif step.step.__eq__(24):
+        step.step = 25
+        step.save()
+        if msg and not is_back(msg):
+            B2CStep.objects.filter(created_by=user_id).update(to_location=msg)
+        recipient_name_text = B2CCommandText.objects.get(text_code=30, lang_code=user.lang).text
+        # Qabul qiluvchining ismini kiriitng
+        context.bot.send_message(chat_id=user_id, text=recipient_name_text, reply_markup=back_markup(user.lang))
+    elif step.step.__eq__(25):
+        step.step = 26
+        step.save()
+        if not is_back(msg):
+            B2CStep.objects.filter(created_by=user_id).update(recipient_name=msg)
+        recipient_phone_text = B2CCommandText.objects.get(text_code=28, lang_code=user.lang).text
+        # text = "Qabul qiluvchining nomerini kiriitng"
+        context.bot.send_message(chat_id=user_id, text=recipient_phone_text, reply_markup=phone_keyboard(user.lang))
+    elif step.step.__eq__(26):
+        step.step = 27
+        step.save()
+        if update.message.contact:
+            msg = update.message.contact.phone_number
+        if not is_back(msg):
+            B2CStep.objects.filter(created_by=user_id).update(recipient_phone=msg)
+        text = order_text(user.lang, user_id)
+        update.message.reply_html(text, disable_web_page_preview=True, reply_markup=inline(user.lang))
+    elif step.step.__eq__(27):
+        pass
+

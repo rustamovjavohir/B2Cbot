@@ -8,8 +8,6 @@ from tgbot.callback import keyboard_callback
 from tgbot.utils import *
 from tgbot.views import *
 
-logging.getLogger('file')
-
 
 class Command(BaseCommand):
     def handle(self, *args, **options):
@@ -17,8 +15,10 @@ class Command(BaseCommand):
         dispatcher: Dispatcher = updater.dispatcher
         updater.dispatcher.add_handler(CommandHandler(command='start', callback=start))
         dispatcher.add_handler(MessageHandler(Filters.regex(r"🔙Ortga") | Filters.regex(r"🔙Назад"), callback=back))
-        dispatcher.add_handler(MessageHandler(Filters.regex(r"✅Tasdiqlash") | Filters.regex(r"✅Подтверждение"),
+        dispatcher.add_handler(MessageHandler(Filters.regex(r"📝Qabul qilmoq") | Filters.regex(r"📝Принять"),
                                               callback=apply))
+        dispatcher.add_handler(MessageHandler(Filters.regex(r"✅Tasdiqlash") | Filters.regex(r"✅Подтверждение"),
+                                              callback=accept))
         dispatcher.add_handler(MessageHandler(Filters.location, callback=get_locations))
         dispatcher.add_handler(MessageHandler(Filters.text & Filters.entity(MessageEntity.PHONE_NUMBER),
                                               callback=phone_entity_handler))
