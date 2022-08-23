@@ -4,7 +4,8 @@ from telegram import Update
 from telegram.ext import CallbackContext
 
 from B2CStaff.keyboards import accept_order, arrive_sender_button, get_first_image, arriva_recipient_button, \
-    get_second_image, order_change_courier, courier_list_button, come_back_done_button
+    get_second_image, order_change_courier, courier_list_button, come_back_done_button, order_canceled_button, \
+    kuryers_list_button
 from B2CStaff.models import Kuryer
 from B2CStaff.models import Kuryer_step
 from B2CStaff.utils import inform
@@ -41,10 +42,10 @@ def keyboard_callback(update: Update, context: CallbackContext):
             order.save()
             text = inform(order)
             update.callback_query.edit_message_text(text=text, reply_markup=order_change_courier(order_id),
-                                                    parse_mode="HTML")
+                                                    disable_web_page_preview=True, parse_mode="HTML")
 
             msg = context.bot.send_message(text=text, chat_id=kuryer.kuryer_telegram_id, parse_mode="HTML",
-                                           reply_markup=accept_order(order.id))
+                                           disable_web_page_preview=True, reply_markup=accept_order(order.id))
 
             order.del_message = msg.message_id
             order.save()
@@ -52,6 +53,47 @@ def keyboard_callback(update: Update, context: CallbackContext):
             update.callback_query.answer(f"Заказ №{order.id} уже выполнен")
             update.callback_query.message.edit_text(f"Заказ <strong>№{order.id}</strong> уже выполнен",
                                                     parse_mode="HTML")
+    elif query_data[-1].__eq__("cancelapply"):
+        order_id = query_data[0]
+        order = B2COrder.objects.get(pk=order_id)
+        new_text = update.callback_query.message.text + f'\n\n<strong>Курьер:</strong> {order.kuryer} \n' \
+                                                        f'Вы действительно хотите отменить заказ? 👇'
+        update.callback_query.message.edit_text(
+            text=new_text,
+            parse_mode="HTML", disable_web_page_preview=True,
+            reply_markup=order_canceled_button(order_id))
+    elif query_data[-1].__eq__("keep"):
+        order_id = query_data[0]
+        order = B2COrder.objects.get(pk=order_id)
+        kuryer = Kuryer.objects.filter(inwork=True, balance__gte=1).filter(
+            ~Q(status=Kuryer.StatusKuryer.COURIER_ACCEPTED_ORDER))
+        text = inform(order)
+        update.callback_query.message.edit_text(
+            text=text,
+            parse_mode="HTML", disable_web_page_preview=True,
+            reply_markup=kuryers_list_button(kuryer, order_id))
+    elif query_data[-1].__eq__("cancel"):
+        order_id = query_data[0]
+        order = B2COrder.objects.get(pk=order_id)
+        if order.status in [order.StatusOrder.ORDER_PROCESSED, order.StatusOrder.COURIER_APPOINTED,
+                            order.StatusOrder.COURIER_ACCEPTED_ORDER]:
+
+            order.status = order.StatusOrder.ORDER_CANCELLED
+            order.save()
+            new_text = inform(order)
+            try:
+                kuryer = Kuryer_step.objects.filter(obj=order_id).first()
+                if kuryer:
+                    kuryer_id = kuryer.admin_id
+                    context.bot.send_message(chat_id=kuryer_id, parse_mode="HTML",
+                                             text=f"Заказ <strong>№{order_id}</strong> был ❌отменен диспетчером")
+                update.callback_query.message.edit_text(text=new_text + "\n❌Заказ отменен", parse_mode="HTML",
+                                                        disable_web_page_preview=True)
+            except Exception as ex:
+                print(ex)
+        else:
+            update.callback_query.answer(f"Заказ №{order.id}\n"
+                                         f"Статус {order.status}")
     elif query_data[-1].__eq__('accept'):
         order_id = query_data[0]
         order = B2COrder.objects.filter(id=order_id).first()
@@ -62,7 +104,8 @@ def keyboard_callback(update: Update, context: CallbackContext):
         order.status = B2COrder.StatusOrder.COURIER_ACCEPTED_ORDER
         # order.kuryer = kuryer
         order.save()
-        update.callback_query.edit_message_text(text, parse_mode="HTML", reply_markup=arrive_sender_button(order_id))
+        update.callback_query.edit_message_text(text, parse_mode="HTML", disable_web_page_preview=True,
+                                                reply_markup=arrive_sender_button(order_id))
     elif query_data[-1].__eq__("came"):
         order_id = query_data[0]
         order = B2COrder.objects.get(id=order_id)

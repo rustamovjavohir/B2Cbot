@@ -34,19 +34,26 @@ def keyboard_callback(update: Update, context: CallbackContext):
         except Exception as ex:
             print(ex, "lang")
     elif query_data[0].__eq__('profile_change_name'):
-        user.step = 6
+        user.step = 7
         user.save()
         name_text = B2CCommandText.objects.filter(text_code=2, lang_code=user.lang).first().text
         text = command_line(name_text)
         update.callback_query.edit_message_text(text)
     elif query_data[0].__eq__('profile_change_phone'):
-        user.step = 7
+        user.step = 8
         user.save()
         phone_text = B2CCommandText.objects.filter(text_code=1, lang_code=user.lang).first().text
         text = command_line(phone_text)
         update.callback_query.delete_message()
         context.bot.send_message(chat_id=user_id, text=text,
                                  reply_markup=phone_keyboard(user.lang))
+    elif query_data[0].__eq__('profile_change_birthday'):
+        user.step = 9
+        user.save()
+        birthday_text = B2CCommandText.objects.filter(text_code=6, lang_code=user.lang).first().text
+        text = command_line(birthday_text)
+        update.callback_query.edit_message_text(text)
+
     elif query_data[0].__eq__('profile_change_lang'):
         update.callback_query.edit_message_text(f"\nO'zingizga qulay tilni tanlang!\n-----"
                                                 f"\nВыберите удобный Вам язык!", reply_markup=change_profile_language())
@@ -76,6 +83,8 @@ def keyboard_callback(update: Update, context: CallbackContext):
             go_create_order_by_conversation(update, context)
         except Exception as ex:
             print(ex, "- safe_delivery")
+    elif query_data[0].__eq__("edit"):
+        update.callback_query.message.edit_reply_markup(reply_markup=inline(user.lang))
     elif query_data[0].__eq__('model'):
         try:
             update.callback_query.message.delete()
@@ -161,7 +170,8 @@ def keyboard_callback(update: Update, context: CallbackContext):
             context.bot.send_message(chat_id=user_id, text=text, parse_mode='HTML', reply_markup=inline(user.lang))
             B2CStep.objects.filter(created_by=user_id).update(step=12)
         else:
-            text += '\nОтправился' if user.lang.__eq__("ru") else "\nYuborildi"
+            text = text.split('☝️')[0]
+            text += '\nОтправился</strong>' if user.lang.__eq__("ru") else "\nYuborildi</strong>"
             B2COrder(order_name=step.order_name, weight=step.weight, sender_name=step.sender_name,
                      sender_phone=step.sender_phone, from_location=step.from_location, to_location=step.to_location,
                      recipient_name=step.recipient_name, recipient_phone=step.recipient_phone, comment=step.comment,
@@ -169,14 +179,14 @@ def keyboard_callback(update: Update, context: CallbackContext):
                      come_back=step.come_back).save()
             B2CUser.objects.filter(telegram_id=user_id).update(address=step.from_location)
             step.delete()
-            context.bot.send_message(chat_id=user_id, text=text, parse_mode='HTML',
+            context.bot.send_message(chat_id=user_id, text=text, parse_mode='HTML', disable_web_page_preview=True,
                                      reply_markup=order_markup(user.lang))
     elif query_data[0].__eq__('home'):
         B2CStep.objects.filter(created_by=user_id).update(step=0)
         update.callback_query.message.delete()
         select_action_text = B2CCommandText.objects.filter(text_code=13, lang_code=user.lang).first().text
         context.bot.send_message(chat_id=user_id, text=select_action_text, reply_markup=order_markup(user.lang))
-        user.step = 5
+        user.step = 6
         user.save()
     elif query_data[0].__eq__("order_del"):
         msg = update.callback_query.message.text
@@ -190,10 +200,6 @@ def keyboard_callback(update: Update, context: CallbackContext):
         ball = eval(query_data[-1])
         msg = update.callback_query.message
         msg = msg.text if msg.text else msg.caption
-        # if msg.text:
-        #     msg = msg.text
-        # else:
-        #     msg = msg.caption
         order_id = [x for x in re.findall(r'-?\d+\.?\d*', msg)]
         kuryer = B2COrder.objects.get(id=order_id[0]).kuryer
         kuryer.ball = round((kuryer.ball + ball) / 2, 2)

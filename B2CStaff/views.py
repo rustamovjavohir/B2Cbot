@@ -27,8 +27,7 @@ def start(update: Update, context: CallbackContext):
             update.message.reply_text(
                 f"<i>Ассалому алейкум! <ins><b>{update.message.from_user.first_name}</b></ins></i>\n"
                 f"<i>Роль: <ins><b>Диспетчер</b></ins></i>",
-                parse_mode="H"
-                           "TML", )
+                parse_mode="HTML",)
 
         else:
             update.message.delete()
@@ -144,7 +143,7 @@ def kuryer_handler(update: Update, context: CallbackContext):
 
             if order.come_back:
                 context.bot.send_message(chat_id=k_step.admin_id, text=inform(order), parse_mode="HTML",
-                                         reply_markup=come_back_button(order_id=order.id))
+                                         disable_web_page_preview=True, reply_markup=come_back_button(order_id=order.id))
                 b2cbot.send_photo(chat_id=order.created_by,
                                   photo=response.content, parse_mode="HTML",
                                   caption=f"✅№ {order.id} {order_has_been_delivered}\n{order_text}: {order.order_name}")

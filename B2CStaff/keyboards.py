@@ -131,3 +131,30 @@ def come_back_done_button(order_id):
     ]
 
     return InlineKeyboardMarkup(button)
+
+
+def order_canceled_button(order_id):
+    button = [
+        [InlineKeyboardButton("🔙Назад",
+                              callback_data=f"{order_id}_keep"),
+         InlineKeyboardButton("✅Да",
+                              callback_data=f"{order_id}_cancel")]
+    ]
+    return InlineKeyboardMarkup(button)
+
+
+def kuryers_list_button(kuryer, order_id):
+    button = []
+    for i in range(1, len(kuryer), 2):
+        if len(kuryer) > 1:
+            button.append({InlineKeyboardButton(f"{kuryer[i - 1].kuryer_name}",
+                                                callback_data=f"{order_id}_{kuryer[i - 1].id}_kuryer"),
+                           InlineKeyboardButton(f"{kuryer[i].kuryer_name}",
+                                                callback_data=f"{order_id}_{kuryer[i].id}_kuryer")})
+    if len(kuryer) % 2 == 1:
+        button.append([InlineKeyboardButton(f"{kuryer[len(kuryer) - 1].kuryer_name}",
+                                            callback_data=f"{order_id}_{kuryer[len(kuryer) - 1].id}_kuryer")])
+
+    button.append([InlineKeyboardButton(f"❌Отменить заказ",
+                                        callback_data=f"{order_id}_cancelapply")])
+    return InlineKeyboardMarkup(button)

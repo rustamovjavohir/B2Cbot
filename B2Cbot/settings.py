@@ -30,7 +30,7 @@ env.read_env()
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = env.bool("DEBUG", default=False)
 
-ALLOWED_HOSTS = ['127.0.0.1', '142.93.253.85', "nesuvezu.com", "www.nesuvezu.com"]
+ALLOWED_HOSTS = ['127.0.0.1', '142.93.253.85', "nesuvezu.com", "www.nesuvezu.com", "157.230.106.107"]
 
 # Application definition
 
@@ -96,17 +96,17 @@ if DEBUG:
             'NAME': BASE_DIR / 'db.sqlite3',
         }
     }
-# else:
-#     DATABASES = {
-#         'default': {
-#             'ENGINE': 'django.db.backends.postgresql_psycopg2',
-#             'NAME': 'b2cdb',
-#             'USER': 'javohir',
-#             'PASSWORD': 'password',
-#             'HOST': 'localhost',
-#             'PORT': '',
-#         }
-#     }
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql_psycopg2',
+            'NAME': 'myproject',
+            'USER': 'myprojectuser',
+            'PASSWORD': 'password',
+            'HOST': 'localhost',
+            'PORT': '',
+        }
+    }
 
 
 # Password validation

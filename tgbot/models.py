@@ -5,7 +5,7 @@ from B2CStaff.models import Kuryer
 
 
 class B2CUser(models.Model):
-    telegram_id = models.BigIntegerField(null=True, blank=True, verbose_name="Телеграм ид")
+    telegram_id = models.BigIntegerField(null=True, blank=True, unique=True, verbose_name="Телеграм ид")
     username = models.CharField(max_length=250, verbose_name="Телеграм профил")
     first_name = models.CharField(max_length=250, null=True, blank=True, verbose_name="Имя Пользователя")
     last_name = models.CharField(max_length=250, null=True, blank=True, verbose_name="Фамилия Пользователя")
@@ -45,6 +45,7 @@ class B2CCommandText(models.Model):
 class B2COrder(models.Model):
     class StatusOrder(models.TextChoices):
         ORDER_PROCESSED = "Заказ оформлен"
+        ORDER_CANCELLED = "Заказ отменен"
         COURIER_APPOINTED = "Курьер назначен"
         COURIER_ACCEPTED_ORDER = "Курьер принял заказ"
         COURIER_ARRIVED_AT_THE_SENDER = "Курьер приехал к отправителю"

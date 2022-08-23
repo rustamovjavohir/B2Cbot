@@ -6,7 +6,7 @@ class Kuryer(models.Model):
         COURIER_ACCEPTED_ORDER = "Курьер принял заказ"
         COURIER_FREE = "Курьер свободен"
 
-    kuryer_telegram_id = models.BigIntegerField(verbose_name="Курьер Telegram ID")
+    kuryer_telegram_id = models.BigIntegerField(verbose_name="Курьер Telegram ID", unique=True)
     kuryer_name = models.CharField(default="", max_length=100, verbose_name="Имя курьера", blank=True)
     inwork = models.BooleanField(default=False, verbose_name="Работает?")
     status = models.CharField(max_length=250, null=True, blank=True, verbose_name="Статус")
@@ -23,7 +23,7 @@ class Kuryer(models.Model):
 
 
 class Dispatcher(models.Model):
-    dispatcher_telegram_id = models.BigIntegerField(verbose_name="Диспетчер Telegram ID")
+    dispatcher_telegram_id = models.BigIntegerField(verbose_name="Диспетчер Telegram ID", unique=True)
     dispatcher_name = models.CharField(default="", max_length=100, verbose_name="Имя диспетчера", blank=True)
 
     def __str__(self):

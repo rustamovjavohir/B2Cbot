@@ -61,6 +61,25 @@ def back_markup(lang_code):
     )
 
 
+def edit_order_markup(lang_code):
+    if lang_code.__eq__("ru"):
+        button = [
+            [InlineKeyboardButton("Комментарии", callback_data="comment"),
+             InlineKeyboardButton("Редактировать", callback_data="edit")],
+            [InlineKeyboardButton("📤Отправить", callback_data="send"),
+             InlineKeyboardButton("🏠Главная страница", callback_data="home")]
+        ]
+    else:
+        button = [
+            [InlineKeyboardButton("Izoh", callback_data="comment"),
+             InlineKeyboardButton("Taxrirlash", callback_data="edit")],
+            [InlineKeyboardButton("📤Jo'natish", callback_data="send"),
+             InlineKeyboardButton("🏠Bosh sahifa", callback_data="home")]
+        ]
+
+    return InlineKeyboardMarkup(button)
+
+
 def order_markup(lang_code):
     create_order_text = B2CCommandText.objects.get(text_code=8, lang_code=lang_code).text
     price_text = B2CCommandText.objects.get(text_code=9, lang_code=lang_code).text
@@ -151,6 +170,18 @@ def apply_button(lang_code):
     )
 
 
+def yes_or_no_button(lang_code):
+    if lang_code.__eq__('ru'):
+        button = [
+            [KeyboardButton(f"Нет"), KeyboardButton(f"Да")]
+        ]
+    else:
+        button = [
+            [KeyboardButton(f"Yo'q"), KeyboardButton(f"Ha")]
+        ]
+    return ReplyKeyboardMarkup(button, resize_keyboard=True)
+
+
 def weight_type_button(lang_code):
     back_text = B2CCommandText.objects.filter(text_code=4, lang_code=lang_code).first().text
     return ReplyKeyboardMarkup(
@@ -165,11 +196,13 @@ def change_profile(lang_code):
     edit_name_text = B2CCommandText.objects.get(text_code=15, lang_code=lang_code).text
     edit_phone_text = B2CCommandText.objects.get(text_code=16, lang_code=lang_code).text
     edit_lang_text = B2CCommandText.objects.get(text_code=38, lang_code=lang_code).text
+    edit_birthday = B2CCommandText.objects.get(text_code=39, lang_code=lang_code).text
     home_text = B2CCommandText.objects.get(text_code=17, lang_code=lang_code).text
     button = [
         [InlineKeyboardButton(edit_name_text, callback_data="profile_change_name"),
-         InlineKeyboardButton(edit_lang_text, callback_data="profile_change_lang"), ],
-        [InlineKeyboardButton(edit_phone_text, callback_data="profile_chang_phone"), ],
+         InlineKeyboardButton(edit_lang_text, callback_data="profile_change_lang")],
+        [InlineKeyboardButton(edit_phone_text, callback_data="profile_change_phone"),
+         InlineKeyboardButton(edit_birthday, callback_data="profile_change_birthday")],
         [InlineKeyboardButton(home_text, callback_data="home")]
 
     ]

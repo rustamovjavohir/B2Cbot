@@ -3,26 +3,33 @@ import re
 import pytz
 from telegram import (Update, ReplyKeyboardRemove)
 from telegram.ext import CallbackContext
+import phonenumbers
 
 from .keyboards import phone_keyboard, back_markup, inline, type_order, change_profile, weight_type_button, \
-    locations_button, sing_up_apply_markup
+    locations_button, sing_up_apply_markup, edit_order_markup, yes_or_no_button
 from .models import B2CUser, B2CCommandText, B2CStep, B2COrder, B2CPrice
 
 
 def phone_wrong(update: Update, context: CallbackContext):
     user_id = update.effective_user.id
     user = B2CUser.objects.filter(telegram_id=user_id).first()
-    user.step = 1
-    user.save()
     tex = B2CCommandText.objects.filter(text_code=1, lang_code=user.lang).first().text
-    text = command_line(tex)
-    context.bot.send_message(chat_id=user_id,
-                             text=text,
-                             reply_markup=phone_keyboard(user.lang))
+    if user.step.__le__(5):
+        user.step = 1
+        user.save()
+        text = command_line(tex)
+        context.bot.send_message(chat_id=user_id,
+                                 text=text,
+                                 reply_markup=phone_keyboard(user.lang))
+    else:
+        text = tex.split('$')[-1]
+        context.bot.send_message(chat_id=user_id,
+                                 text=text,
+                                 reply_markup=phone_keyboard(user.lang))
 
 
 def user_update(user_id, user_filed, update_text, step=0):
-    commands = ["🔙Ortga", "sign up"]
+    commands = ["🔙Ortga", "sign up", "🔙Назад"]
     # -----------------------------------------------------------------
     if update_text not in commands:
         user = B2CUser.objects.filter(telegram_id=user_id).first()
@@ -179,8 +186,8 @@ def order_text(lang_code: str, user_id):
             text += f"<strong>Обратно: </strong> ✅\n"
         if step.price:
             text += f"<strong>Цена: </strong>{step.price} сум\n"
-        text += "Если всё правилно нажмите '📤Отправить'\n" \
-                "Иначе отредактируйте"
+        text += "\n<strong>☝️Если всё правилно нажмите '📤Отправить'\n" \
+                "Иначе отредактируйте</strong>"
     else:
         if not step.order_name:
             text += f"<strong>Buyum nomi: </strong> (zarur)\n"
@@ -230,8 +237,8 @@ def order_text(lang_code: str, user_id):
             text += f"<strong>Qaytib kelish: </strong> ✅\n"
         if step.price:
             text += f"<strong>Narx: </strong>{step.price} сум\n"
-        text += "Ma'lumotlar to'g'ri bo'lsa '📤Jo'natish' tugmasini bosing\n" \
-                "Aks holda tahrirlang"
+        text += "\n<strong>☝️Ma'lumotlar to'g'ri bo'lsa '📤Jo'natish' tugmasini bosing\n" \
+                "Aks holda tahrirlang</strong>"
     return text
 
 
@@ -253,43 +260,50 @@ def create_order(update: Update, context: CallbackContext):
             update.message.delete()
             text = order_text(user.lang, user_id)
             update.message.reply_html(text, disable_web_page_preview=True, reply_markup=inline(user.lang))
-        elif step.step == 2:
-            text = order_text(user.lang, user_id)
-            context.bot.send_message(chat_id=user_id, text=text, parse_mode='HTML', disable_web_page_preview=True,
-                                     reply_markup=inline(user.lang))
-        elif step.step == 3:
-            try:
-                context.bot.delete_message(chat_id=user_id, message_id=step.delete_message)
-            except Exception as ex:
-                print(ex)
-            update.message.delete()
-            msg = update.message.text
-            B2CStep.objects.filter(created_by=user_id).update(order_name=msg)
-            text = order_text(user.lang, user_id)
-            update.message.reply_html(text, disable_web_page_preview=True, reply_markup=inline(user.lang))
-        elif step.step == 4:
-            try:
-                context.bot.delete_message(chat_id=user_id, message_id=step.delete_message)
-            except Exception as ex:
-                print(ex)
-            update.message.delete()
-            msg = update.message.text
-            if msg:
-                set_price(user_id, weight=msg, is_safe=step.is_safe)
-                B2CStep.objects.filter(created_by=user_id).update(weight=msg)
-            text = order_text(user.lang, user_id)
-            update.message.reply_html(text, disable_web_page_preview=True, reply_markup=inline(user.lang))
-        elif step.step == 5:
-            try:
-                context.bot.delete_message(chat_id=user_id, message_id=step.delete_message)
-            except Exception as ex:
-                print(ex)
-            update.message.delete()
-            msg = update.message.text
-            if msg:
-                B2CStep.objects.filter(created_by=user_id).update(from_location=msg)
-            text = order_text(user.lang, user_id)
-            update.message.reply_html(text, disable_web_page_preview=True, reply_markup=inline(user.lang))
+        if step.step.__le__(5):
+            if step.step == 2:
+                text = order_text(user.lang, user_id)
+                context.bot.send_message(chat_id=user_id, text=text, parse_mode='HTML', disable_web_page_preview=True,
+                                         reply_markup=inline(user.lang))
+            elif step.step == 3:
+                try:
+                    context.bot.delete_message(chat_id=user_id, message_id=step.delete_message)
+                except Exception as ex:
+                    print(ex)
+                update.message.delete()
+                msg = update.message.text
+                B2CStep.objects.filter(created_by=user_id).update(order_name=msg)
+                text = order_text(user.lang, user_id)
+                update.message.reply_html(text, disable_web_page_preview=True, reply_markup=inline(user.lang))
+            elif step.step == 4:
+                try:
+                    context.bot.delete_message(chat_id=user_id, message_id=step.delete_message)
+                except Exception as ex:
+                    print(ex)
+                update.message.delete()
+                msg = update.message.text
+                try:
+                    if msg:
+                        set_price(user_id, weight=msg, is_safe=step.is_safe)
+                        B2CStep.objects.filter(created_by=user_id).update(weight=msg)
+                except Exception as ex:
+                    pass
+                    # weight_text = B2CCommandText.objects.get(text_code=25, lang_code=user.lang).text
+                    # context.bot.send_message(chat_id=user_id, text=weight_text,
+                    #                          reply_markup=weight_type_button(user.lang))
+                text = order_text(user.lang, user_id)
+                update.message.reply_html(text, disable_web_page_preview=True, reply_markup=inline(user.lang))
+            elif step.step == 5:
+                try:
+                    context.bot.delete_message(chat_id=user_id, message_id=step.delete_message)
+                except Exception as ex:
+                    print(ex)
+                update.message.delete()
+                msg = update.message.text
+                if msg:
+                    B2CStep.objects.filter(created_by=user_id).update(from_location=msg)
+                text = order_text(user.lang, user_id)
+                update.message.reply_html(text, disable_web_page_preview=True, reply_markup=inline(user.lang))
         elif step.step == 6:
             try:
                 context.bot.delete_message(chat_id=user_id, message_id=step.delete_message)
@@ -451,50 +465,48 @@ def user_profile(user_id):
 
 
 def set_price(user_id, weight, is_safe):
-    if weight:
-        weight_list = [float(x) for x in re.findall(r'-?\d+\.?\d*', weight)]
-        max_weight: float = max(weight_list)
-        if is_safe:
-            if max_weight <= 3:
-                pr = B2CPrice.objects.all()[1].price1
-            elif max_weight <= 6:
-                pr = B2CPrice.objects.all()[1].price2
-            elif max_weight <= 9:
-                pr = B2CPrice.objects.all()[1].price3
-            elif max_weight <= 12:
-                pr = B2CPrice.objects.all()[1].price4
-            elif max_weight <= 15:
-                pr = B2CPrice.objects.all()[1].price5
+    try:
+        if weight:
+            weight_list = [float(x) for x in re.findall(r'-?\d+\.?\d*', weight)]
+            max_weight: float = max(weight_list)
+            if is_safe:
+                if max_weight <= 3:
+                    pr = B2CPrice.objects.all()[1].price1
+                elif max_weight <= 6:
+                    pr = B2CPrice.objects.all()[1].price2
+                elif max_weight <= 9:
+                    pr = B2CPrice.objects.all()[1].price3
+                elif max_weight <= 12:
+                    pr = B2CPrice.objects.all()[1].price4
+                elif max_weight <= 15:
+                    pr = B2CPrice.objects.all()[1].price5
+                else:
+                    pr = B2CPrice.objects.all()[1].price6
             else:
-                pr = B2CPrice.objects.all()[1].price6
-        else:
-            if max_weight <= 3:
-                pr = B2CPrice.objects.all()[0].price1
-            elif max_weight <= 6:
-                pr = B2CPrice.objects.all()[0].price2
-            elif max_weight <= 9:
-                pr = B2CPrice.objects.all()[0].price3
-            elif max_weight <= 12:
-                pr = B2CPrice.objects.all()[0].price4
-            elif max_weight <= 15:
-                pr = B2CPrice.objects.all()[0].price5
-            else:
-                pr = B2CPrice.objects.all()[0].price6
-        B2CStep.objects.filter(created_by=user_id).update(price=pr)
+                if max_weight <= 3:
+                    pr = B2CPrice.objects.all()[0].price1
+                elif max_weight <= 6:
+                    pr = B2CPrice.objects.all()[0].price2
+                elif max_weight <= 9:
+                    pr = B2CPrice.objects.all()[0].price3
+                elif max_weight <= 12:
+                    pr = B2CPrice.objects.all()[0].price4
+                elif max_weight <= 15:
+                    pr = B2CPrice.objects.all()[0].price5
+                else:
+                    pr = B2CPrice.objects.all()[0].price6
+            B2CStep.objects.filter(created_by=user_id).update(price=pr)
+    except Exception as ex:
+        print(ex, " --set_price")
 
 
 def go_create_order_by_conversation(update: Update, context: CallbackContext):
     user_id = update.effective_user.id
     user = B2CUser.objects.get(telegram_id=user_id)
-    if user.address:
-        user_data = user_profile(user_id)
-        context.bot.send_message(chat_id=user_id, text=user_data, reply_markup=sing_up_apply_markup(user.lang),
-                                 parse_mode="HTML")
-    else:
-        B2CStep.objects.filter(created_by=user_id).update(step=21)
-        order_from_text = B2CCommandText.objects.filter(text_code=26, lang_code=user.lang).first().text
-        context.bot.send_message(chat_id=user_id, text=order_from_text,
-                                 reply_markup=locations_button(user.lang))
+    B2CStep.objects.filter(created_by=user_id).update(step=21)
+    order_from_text = B2CCommandText.objects.filter(text_code=26, lang_code=user.lang).first().text
+    context.bot.send_message(chat_id=user_id, text=order_from_text,
+                             reply_markup=locations_button(user.lang))
 
 
 def create_order_by_conversation(update: Update, context: CallbackContext):
@@ -509,7 +521,8 @@ def create_order_by_conversation(update: Update, context: CallbackContext):
             B2CStep.objects.filter(created_by=user_id).update(from_location=msg)
         order_name_text = B2CCommandText.objects.get(text_code=24, lang_code=user.lang).text
         #  Mahsulot nomini kiriting
-        context.bot.send_message(chat_id=user_id, text=order_name_text, reply_markup=back_markup(user.lang))
+        context.bot.send_message(chat_id=user_id, text=order_name_text, disable_web_page_preview=True,
+                                 reply_markup=back_markup(user.lang))
     elif step.step.__eq__(22):
         step.step = 23
         step.save()
@@ -517,16 +530,22 @@ def create_order_by_conversation(update: Update, context: CallbackContext):
             B2CStep.objects.filter(created_by=user_id).update(order_name=msg)
         order_weight_text = B2CCommandText.objects.get(text_code=25, lang_code=user.lang).text
         # Mahsulot vaznini tanlang (kg)⤵️
-        context.bot.send_message(chat_id=user_id, text=order_weight_text, reply_markup=weight_type_button(user.lang))
+        context.bot.send_message(chat_id=user_id, text=order_weight_text, disable_web_page_preview=True,
+                                 reply_markup=weight_type_button(user.lang))
     elif step.step.__eq__(23):
-        step.step = 24
-        step.save()
-        if not is_back(msg):
-            set_price(user_id, weight=msg, is_safe=step.is_safe)
-            B2CStep.objects.filter(created_by=user_id).update(weight=msg)
-        to_location_text = B2CCommandText.objects.get(text_code=29, lang_code=user.lang).text
-        # Qayerga yetkazib berish, manzilni yuboring
-        context.bot.send_message(chat_id=user_id, text=to_location_text, reply_markup=locations_button(user.lang))
+        try:
+            weight_list = [float(x) for x in re.findall(r'-?\d+\.?\d*', msg)]
+            if not is_back(msg) and len(weight_list):
+                step.step = 24
+                step.save()
+                set_price(user_id, weight=msg, is_safe=step.is_safe)
+                B2CStep.objects.filter(created_by=user_id).update(weight=msg)
+                to_location_text = B2CCommandText.objects.get(text_code=29, lang_code=user.lang).text
+                # Qayerga yetkazib berish, manzilni yuboring
+                context.bot.send_message(chat_id=user_id, text=to_location_text, disable_web_page_preview=True,
+                                         reply_markup=locations_button(user.lang))
+        except Exception as ex:
+            print(ex, "--step 23")
     elif step.step.__eq__(24):
         step.step = 25
         step.save()
@@ -540,18 +559,37 @@ def create_order_by_conversation(update: Update, context: CallbackContext):
         step.save()
         if not is_back(msg):
             B2CStep.objects.filter(created_by=user_id).update(recipient_name=msg)
-        recipient_phone_text = B2CCommandText.objects.get(text_code=28, lang_code=user.lang).text
+        recipient_phone_text = B2CCommandText.objects.get(text_code=31, lang_code=user.lang).text
         # text = "Qabul qiluvchining nomerini kiriitng"
         context.bot.send_message(chat_id=user_id, text=recipient_phone_text, reply_markup=phone_keyboard(user.lang))
     elif step.step.__eq__(26):
         step.step = 27
         step.save()
-        if update.message.contact:
-            msg = update.message.contact.phone_number
-        if not is_back(msg):
-            B2CStep.objects.filter(created_by=user_id).update(recipient_phone=msg)
-        text = order_text(user.lang, user_id)
-        update.message.reply_html(text, disable_web_page_preview=True, reply_markup=inline(user.lang))
+        try:
+            if update.message.contact:
+                msg = update.message.contact.phone_number
+            if not is_back(msg):
+                phone_number = phonenumbers.parse(msg, region='UZ')
+                if phonenumbers.is_valid_number(phone_number):
+                    B2CStep.objects.filter(created_by=user_id).update(recipient_phone=msg)
+                else:
+                    raise Exception("Wrong number")
+            # text = "Qaytib olib kelishni hohlaysizmi "
+            return_service_text = B2CCommandText.objects.get(text_code=40, lang_code=user.lang).text
+            context.bot.send_message(chat_id=user_id, text=return_service_text, reply_markup=yes_or_no_button(user.lang))
+        except Exception as ex:
+            B2CStep.objects.filter(created_by=user_id).update(step=26)
+            phone_wrong(update, context)
+            print(ex, "--wrong phone")
     elif step.step.__eq__(27):
-        pass
-
+        step.step = 28
+        step.save()
+        # update.message.delete()
+        context.bot.send_message(chat_id=user_id, text="Thank you", reply_markup=ReplyKeyboardRemove())
+        if not is_back(msg):
+            if msg.__eq__("Да") or msg.__eq__("Ha"):
+                B2CStep.objects.filter(created_by=user_id).update(come_back=True)
+            else:
+                B2CStep.objects.filter(created_by=user_id).update(come_back=False)
+        text = order_text(user.lang, user_id)
+        update.message.reply_html(text, disable_web_page_preview=True, reply_markup=edit_order_markup(user.lang))

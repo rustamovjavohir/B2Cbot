@@ -76,4 +76,7 @@ def pre_save_order(sender, instance, *args, **kwargs):
             instance.del_courier = msg.message_id
 
     except Exception as ex:
-        pass
+        if instance.status == B2COrder.StatusOrder.ORDER_CANCELLED:
+            user_telegram_id = instance.created_by
+            userbot.send_message(chat_id=user_telegram_id, parse_mode="HTML",
+                                 text=f"Заказ <strong>№{instance.id}</strong> был ❌отменен диспетчером")
