@@ -74,6 +74,7 @@ class B2COrder(models.Model):
     created_by = models.BigIntegerField()
     come_back = models.BooleanField(default=False, verbose_name="Обратно")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Дата")
+    delivery_done_time = models.CharField(null=True, max_length=20, verbose_name="Время завершение доставки")
     del_message = models.IntegerField(null=True, blank=True)
     del_courier = models.IntegerField(null=True, blank=True)
     is_deleted = models.BooleanField(default=False)

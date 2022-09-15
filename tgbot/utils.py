@@ -467,6 +467,7 @@ def user_profile(user_id):
 def set_price(user_id, weight, is_safe):
     try:
         if weight:
+            is_come_back = B2CStep.objects.get(created_by=user_id).come_back
             weight_list = [float(x) for x in re.findall(r'-?\d+\.?\d*', weight)]
             max_weight: float = max(weight_list)
             if is_safe:
@@ -482,6 +483,8 @@ def set_price(user_id, weight, is_safe):
                     pr = B2CPrice.objects.all()[1].price5
                 else:
                     pr = B2CPrice.objects.all()[1].price6
+                if is_come_back:
+                    pr += B2CPrice.objects.all()[1].price_come_back
             else:
                 if max_weight <= 3:
                     pr = B2CPrice.objects.all()[0].price1
@@ -495,6 +498,8 @@ def set_price(user_id, weight, is_safe):
                     pr = B2CPrice.objects.all()[0].price5
                 else:
                     pr = B2CPrice.objects.all()[0].price6
+                if is_come_back:
+                    pr += B2CPrice.objects.all()[0].price_come_back
             B2CStep.objects.filter(created_by=user_id).update(price=pr)
     except Exception as ex:
         print(ex, " --set_price")

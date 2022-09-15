@@ -80,12 +80,13 @@ def keyboard_callback(update: Update, context: CallbackContext):
 
             order.status = order.StatusOrder.ORDER_CANCELLED
             order.save()
+            kuryer = Kuryer_step.objects.filter(obj=order_id).first()
+            Kuryer.objects.filter(kuryer_telegram_id=kuryer.admin_id).update(status=Kuryer.StatusKuryer.COURIER_FREE)
             new_text = inform(order)
             try:
-                kuryer = Kuryer_step.objects.filter(obj=order_id).first()
-                if kuryer:
-                    kuryer_id = kuryer.admin_id
-                    context.bot.send_message(chat_id=kuryer_id, parse_mode="HTML",
+                if order.kuryer:
+                    kuryer_id = order.kuryer.kuryer_telegram_id
+                    context.bot.edit_message_text(chat_id=kuryer_id, message_id=order.del_message, parse_mode="HTML",
                                              text=f"Заказ <strong>№{order_id}</strong> был ❌отменен диспетчером")
                 update.callback_query.message.edit_text(text=new_text + "\n❌Заказ отменен", parse_mode="HTML",
                                                         disable_web_page_preview=True)
@@ -102,6 +103,7 @@ def keyboard_callback(update: Update, context: CallbackContext):
         kuryer.status = Kuryer.StatusKuryer.COURIER_ACCEPTED_ORDER
         kuryer.save()
         order.status = B2COrder.StatusOrder.COURIER_ACCEPTED_ORDER
+        Kuryer_step.objects.filter(admin_id=kuryer.kuryer_telegram_id).update(obj=order_id)
         # order.kuryer = kuryer
         order.save()
         update.callback_query.edit_message_text(text, parse_mode="HTML", disable_web_page_preview=True,

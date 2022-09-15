@@ -182,7 +182,7 @@ def keyboard_callback(update: Update, context: CallbackContext):
             context.bot.send_message(chat_id=user_id, text=text, parse_mode='HTML', disable_web_page_preview=True,
                                      reply_markup=order_markup(user.lang))
     elif query_data[0].__eq__('home'):
-        B2CStep.objects.filter(created_by=user_id).update(step=0)
+        B2CStep.objects.filter(created_by=user_id).update(step=0, come_back=False)
         update.callback_query.message.delete()
         select_action_text = B2CCommandText.objects.filter(text_code=13, lang_code=user.lang).first().text
         context.bot.send_message(chat_id=user_id, text=select_action_text, reply_markup=order_markup(user.lang))

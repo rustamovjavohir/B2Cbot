@@ -1,4 +1,4 @@
-from telegram import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardButton, InlineKeyboardMarkup, LoginUrl
 
 from tgbot.models import B2CCommandText
 
@@ -222,7 +222,7 @@ def del_order_inline_button(lang_code):
     close_text = B2CCommandText.objects.get(text_code=36, lang_code=lang_code).text
     delete_text = B2CCommandText.objects.get(text_code=37, lang_code=lang_code).text
     button = [
-        [InlineKeyboardButton(delete_text, callback_data="order_del"),
+        [InlineKeyboardButton(delete_text, callback_data="order_del" ),
          InlineKeyboardButton(close_text, callback_data="order_close")]
     ]
     return InlineKeyboardMarkup(button)

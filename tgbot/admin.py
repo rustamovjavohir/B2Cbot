@@ -14,8 +14,8 @@ from .resources import B2COrderResource, B2CUserResource
 
 @admin.register(B2COrder)
 class B2COrderAdmin(ImportExportActionModelAdmin, ImportExportModelAdmin):
-    list_display = ["id", "order_name", "weight", "price", "status", "kuryer", "from_location", "sender_name",
-                    "sender_phone", "to_location", "recipient_name", "recipient_phone", "come_back",
+    list_display = ["id", "order_name", "weight", "price", "status", "kuryer", "from_location",
+                    "sender_name", "sender_phone", "to_location", "recipient_name", "recipient_phone", "come_back",
                     "comment", "created_at"]
     list_editable = ["comment"]
     list_display_links = ["id", "order_name", "from_location"]

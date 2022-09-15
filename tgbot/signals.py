@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 from django.conf import settings
 from django.db.models import Q
 from django.db.models.signals import post_save, pre_save
@@ -72,6 +74,15 @@ def pre_save_order(sender, instance, *args, **kwargs):
             if instance.status == B2COrder.StatusOrder.CUSTOMER_CONFIRMATION_PENDING:
                 userbot.send_message(chat_id=user_telegram_id, text="Tovarni olganingizni tasdiqlang",
                                      reply_markup=apply_get(order_id=instance.id))
+            elif instance.status == B2COrder.StatusOrder.COMPLETED:
+                try:
+                    time = datetime.now(timezone.utc) - instance.created_at
+                    date, _ = str(time).split(".")
+                    a, b, s = date.split(":")
+                    instance.delivery_done_time = a + ":" + b
+                    # B2COrder.objects.filter(pk=instance.id).update(delivery_done_time=a + ":" + b)
+                except:
+                    pass
             msg = userbot.send_message(chat_id=user_telegram_id, text=text, parse_mode="HTML", )
             instance.del_courier = msg.message_id
 

@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 import requests
 from django.conf import settings
 from telegram import Update, Bot
@@ -27,7 +29,7 @@ def start(update: Update, context: CallbackContext):
             update.message.reply_text(
                 f"<i>Ассалому алейкум! <ins><b>{update.message.from_user.first_name}</b></ins></i>\n"
                 f"<i>Роль: <ins><b>Диспетчер</b></ins></i>",
-                parse_mode="HTML",)
+                parse_mode="HTML", )
 
         else:
             update.message.delete()
@@ -41,7 +43,8 @@ def kuryer_handler(update: Update, context: CallbackContext):
     photo = update.message.photo
     msg = update.message.text
     user_id = update.effective_user.id
-    k_step = Kuryer_step.objects.get(admin_id=user_id)
+    # k_step = Kuryer_step.objects.get(admin_id=user_id)
+    k_step, created = Kuryer_step.objects.get_or_create(admin_id=user_id)
 
     if k_step.step == 0 and msg == "Поиск заказа":
         update.message.delete()
@@ -91,7 +94,7 @@ def kuryer_handler(update: Update, context: CallbackContext):
         Kuryer_step.objects.filter(admin_id=user_id).update(step=0)
         Kuryer.objects.filter(kuryer_telegram_id=user_id).update(inwork=True)
         update.message.reply_text(reply_markup=start_button_kuryer(user_id), text="😊Удачи в работе, не уставай")
-    elif k_step.step == 0 and msg == "🔚Завершить работу":
+    elif (k_step.step == 0 or k_step.step == 2) and msg == "🔚Завершить работу":
         update.message.delete()
         Kuryer_step.objects.filter(admin_id=user_id).update(step=3)
         update.message.reply_text("Вы подтверждаете, что выполнили свою работу?",
@@ -143,18 +146,26 @@ def kuryer_handler(update: Update, context: CallbackContext):
 
             if order.come_back:
                 context.bot.send_message(chat_id=k_step.admin_id, text=inform(order), parse_mode="HTML",
-                                         disable_web_page_preview=True, reply_markup=come_back_button(order_id=order.id))
+                                         disable_web_page_preview=True,
+                                         reply_markup=come_back_button(order_id=order.id))
                 b2cbot.send_photo(chat_id=order.created_by,
                                   photo=response.content, parse_mode="HTML",
                                   caption=f"✅№ {order.id} {order_has_been_delivered}\n{order_text}: {order.order_name}")
             else:
                 order.status = B2COrder.StatusOrder.COMPLETED
                 order.save()
+                # try:
+                #     time = datetime.now(timezone.utc) - order.created_at
+                #     date, _ = str(time).split(".")
+                #     a, b, s = date.split(":")
+                #     B2COrder.objects.filter(pk=order.id).update(delivery_done_time=a + ":" + b)
+                # except:
+                #     pass
                 b2cbot.send_photo(chat_id=order.created_by,
                                   photo=response.content, parse_mode="HTML",
                                   caption=f"✅№ {order.id} {order_has_been_delivered}\n{order_text}: {order.order_name}",
                                   reply_markup=review_list_button())
-                Kuryer_step.objects.filter(admin_id=user_id).update(step=0)
+            Kuryer_step.objects.filter(admin_id=user_id).update(step=0)
         else:
             update.message.delete()
             update.message.reply_text("❗️❗️❗️🤨  Только фото")
