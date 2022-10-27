@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 
+import requests
 from django.conf import settings
 from django.db.models import Q
 from django.db.models.signals import post_save, pre_save
@@ -9,7 +10,7 @@ from telegram import InlineKeyboardButton, Bot, InlineKeyboardMarkup
 from B2CStaff.models import Kuryer, Dispatcher
 from B2CStaff.utils import inform, kuryer_text
 from tgbot.keyboards import apply_get
-from tgbot.models import B2COrder
+from tgbot.models import B2COrder, LiveLocation
 
 staffbot = Bot(token=settings.TELEGRAM_TOKEN_B2CSTAFF)
 userbot = Bot(token=settings.TELEGRAM_TOKEN)
@@ -40,6 +41,12 @@ def post_save_order(sender, instance, created, *args, **kwargs):
                                   disable_web_page_preview=True,
                                   text=f"{inform(instance)}\n\nВыберите КУРЬЕР 👇",
                                   reply_markup=InlineKeyboardMarkup(button))
+    else:
+        if instance.status in [B2COrder.StatusOrder.ORDER_CANCELLED, instance.status == B2COrder.StatusOrder.COMPLETED]:
+            locat = LiveLocation.objects.filter(order=instance).first()
+            params = {'chat_id': locat.client_id, 'message_id': locat.send_message_id}
+            requests.post(url=f"https://api.telegram.org/{settings.TELEGRAM_TOKEN}/stopMessageLiveLocation",
+                          params=params)
 
 
 @receiver(pre_save, sender=B2COrder)

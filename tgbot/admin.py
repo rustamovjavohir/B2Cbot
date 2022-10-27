@@ -71,9 +71,9 @@ class B2CUserAdmin(ImportExportActionModelAdmin, ImportExportModelAdmin):
 @admin.register(B2CPrice)
 class B2CPriceAdmin(admin.ModelAdmin):
     list_display = ["id", "name_price_order", "price_come_back", "price", "price1", "price2", "price3",
-                    "price4", "price5", "price6", "percent"]
+                    "percent"]
     list_editable = ["name_price_order", "price_come_back", "price", "price1", "price2", "price3",
-                     "price4", "price5", "price6", "percent"]
+                     "percent"]
 
 
 @admin.register(B2CCommandText)

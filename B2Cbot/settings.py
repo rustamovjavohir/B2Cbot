@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     # local
     'tgbot',
     'B2CStaff',
+    'sms',
     'telegram',
 
     # libraries
@@ -190,4 +191,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 SECRET_KEY = env.str('SECRET_KEY')
 TELEGRAM_TOKEN = env.str('TELEGRAM_TOKEN')
 TELEGRAM_TOKEN_B2CSTAFF = env.str("TELEGRAM_TOKEN_B2CSTAFF")
+SMS_USERNAME = env.str("SMS_USERNAME")
+SMS_PASSWORD = env.str("SMS_PASSWORD")
+SMS_URL = env.str("SMS_URL")
 # DATABASES = {'default': env.db('DATABASE_URL')}

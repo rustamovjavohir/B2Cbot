@@ -1,5 +1,5 @@
 import re
-
+from sms.views import checkValidMessage, sendValidMessage
 import pytz
 from telegram import (Update, ReplyKeyboardRemove)
 from telegram.ext import CallbackContext
@@ -14,7 +14,7 @@ def phone_wrong(update: Update, context: CallbackContext):
     user_id = update.effective_user.id
     user = B2CUser.objects.filter(telegram_id=user_id).first()
     tex = B2CCommandText.objects.filter(text_code=1, lang_code=user.lang).first().text
-    if user.step.__le__(5):
+    if user.step.__le__(6):
         user.step = 1
         user.save()
         text = command_line(tex)
@@ -46,15 +46,16 @@ def phone_contact_handler(update: Update, context: CallbackContext):
     step = B2CStep.objects.filter(created_by=user_id).first()
     if user.step == 1:
         user = user_update(user_id, 'phone_number', contact.phone_number, step=2)
-        tex = B2CCommandText.objects.filter(text_code=2, lang_code=user.lang).first().text
+        response = sendValidMessage(phone=contact.phone_number, user_telegram_id=user.telegram_id)
+        tex = B2CCommandText.objects.filter(text_code=44, lang_code=user.lang).first().text
         text = command_line(tex)
         update.message.reply_text(text=text, reply_markup=back_markup(user.lang))
-    elif user.step == 6:
+    elif user.step == 7:
         if step.step == 26:
             create_order_by_conversation(update, context)
         else:
             create_order(update, context)
-    elif user.step == 8:
+    elif user.step == 9:
         user = user_update(user_id, 'phone_number', contact.phone_number, step=5)
         text = user_profile(user_id)
         context.bot.send_message(chat_id=user_id, text=text, parse_mode="HTML", reply_markup=change_profile(user.lang))
@@ -68,15 +69,16 @@ def phone_entity_handler(update: Update, context: CallbackContext):
     step = B2CStep.objects.filter(created_by=user_id).first()
     if user.step == 1:
         user = user_update(user_id, 'phone_number', phone_number, step=2)
-        tex = B2CCommandText.objects.filter(text_code=2, lang_code=user.lang).first().text
+        response = sendValidMessage(phone=phone_number, user_telegram_id=user.telegram_id)
+        tex = B2CCommandText.objects.filter(text_code=44, lang_code=user.lang).first().text
         text = command_line(tex)
         update.message.reply_text(text=text, reply_markup=back_markup(user.lang))
-    elif user.step == 6:
+    elif user.step == 7:
         if step.step == 26:
             create_order_by_conversation(update, context)
         else:
             create_order(update, context)
-    elif user.step == 8:
+    elif user.step == 9:
         user = user_update(user_id, 'phone_number', phone_number, step=5)
         text = user_profile(user_id)
         context.bot.send_message(chat_id=user_id, text=text, parse_mode="HTML", reply_markup=change_profile(user.lang))
@@ -85,7 +87,7 @@ def phone_entity_handler(update: Update, context: CallbackContext):
 def get_locations(update: Update, context: CallbackContext):
     user_id = update.effective_user.id
     user = B2CUser.objects.filter(telegram_id=user_id).first()
-    if user.step == 6:
+    if user.step == 7:
         user_location = update.message.location
         step = B2CStep.objects.filter(created_by=user_id).first()
         location = f"https://yandex.ru/maps/?pt={user_location.longitude},{user_location.latitude}&z=18&l=map"
@@ -143,9 +145,9 @@ def order_text(lang_code: str, user_id):
         else:
             text += f"<strong>Товар: </strong>{step.order_name}\n"
         if not step.weight:
-            text += f"<strong>Вес товаров: </strong>(необходимые)\n"
+            text += f"<strong>Способ доставки: </strong>(необходимые)\n"
         else:
-            text += f"<strong>Вес товаров: </strong>{step.weight}\n"
+            text += f"<strong>Способ доставки: </strong>{step.weight}\n"
         if not step.from_location:
             text += f"<strong>Откуда доставить: </strong>(необходимые)\n"
         else:
@@ -194,9 +196,9 @@ def order_text(lang_code: str, user_id):
         else:
             text += f"<strong>Buyum nomi: </strong>{step.order_name}\n"
         if not step.weight:
-            text += f"<strong>Buyum og'irligi: </strong>(zarur)\n"
+            text += f"<strong>Yetkazib berish usuli: </strong>(zarur)\n"
         else:
-            text += f"<strong>Buyum og'irligi: </strong>{step.weight}\n"
+            text += f"<strong>Yetkazib berish usuli: </strong>{step.weight}\n"
         if not step.from_location:
             text += f"<strong>Qayerdan olish: </strong>(zarur)\n"
         else:
@@ -471,33 +473,21 @@ def set_price(user_id, weight, is_safe):
             weight_list = [float(x) for x in re.findall(r'-?\d+\.?\d*', weight)]
             max_weight: float = max(weight_list)
             if is_safe:
-                if max_weight <= 3:
+                if max_weight <= 10:
                     pr = B2CPrice.objects.all()[1].price1
-                elif max_weight <= 6:
+                elif max_weight <= 20:
                     pr = B2CPrice.objects.all()[1].price2
-                elif max_weight <= 9:
-                    pr = B2CPrice.objects.all()[1].price3
-                elif max_weight <= 12:
-                    pr = B2CPrice.objects.all()[1].price4
-                elif max_weight <= 15:
-                    pr = B2CPrice.objects.all()[1].price5
                 else:
-                    pr = B2CPrice.objects.all()[1].price6
+                    pr = B2CPrice.objects.all()[1].price3
                 if is_come_back:
                     pr += B2CPrice.objects.all()[1].price_come_back
             else:
-                if max_weight <= 3:
+                if max_weight <= 10:
                     pr = B2CPrice.objects.all()[0].price1
-                elif max_weight <= 6:
+                elif max_weight <= 20:
                     pr = B2CPrice.objects.all()[0].price2
-                elif max_weight <= 9:
-                    pr = B2CPrice.objects.all()[0].price3
-                elif max_weight <= 12:
-                    pr = B2CPrice.objects.all()[0].price4
-                elif max_weight <= 15:
-                    pr = B2CPrice.objects.all()[0].price5
                 else:
-                    pr = B2CPrice.objects.all()[0].price6
+                    pr = B2CPrice.objects.all()[0].price3
                 if is_come_back:
                     pr += B2CPrice.objects.all()[0].price_come_back
             B2CStep.objects.filter(created_by=user_id).update(price=pr)
@@ -581,7 +571,8 @@ def create_order_by_conversation(update: Update, context: CallbackContext):
                     raise Exception("Wrong number")
             # text = "Qaytib olib kelishni hohlaysizmi "
             return_service_text = B2CCommandText.objects.get(text_code=40, lang_code=user.lang).text
-            context.bot.send_message(chat_id=user_id, text=return_service_text, reply_markup=yes_or_no_button(user.lang))
+            context.bot.send_message(chat_id=user_id, text=return_service_text,
+                                     reply_markup=yes_or_no_button(user.lang))
         except Exception as ex:
             B2CStep.objects.filter(created_by=user_id).update(step=26)
             phone_wrong(update, context)

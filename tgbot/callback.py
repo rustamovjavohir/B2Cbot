@@ -34,13 +34,13 @@ def keyboard_callback(update: Update, context: CallbackContext):
         except Exception as ex:
             print(ex, "lang")
     elif query_data[0].__eq__('profile_change_name'):
-        user.step = 7
+        user.step = 8
         user.save()
         name_text = B2CCommandText.objects.filter(text_code=2, lang_code=user.lang).first().text
         text = command_line(name_text)
         update.callback_query.edit_message_text(text)
     elif query_data[0].__eq__('profile_change_phone'):
-        user.step = 8
+        user.step = 9
         user.save()
         phone_text = B2CCommandText.objects.filter(text_code=1, lang_code=user.lang).first().text
         text = command_line(phone_text)
@@ -48,7 +48,7 @@ def keyboard_callback(update: Update, context: CallbackContext):
         context.bot.send_message(chat_id=user_id, text=text,
                                  reply_markup=phone_keyboard(user.lang))
     elif query_data[0].__eq__('profile_change_birthday'):
-        user.step = 9
+        user.step = 10
         user.save()
         birthday_text = B2CCommandText.objects.filter(text_code=6, lang_code=user.lang).first().text
         text = command_line(birthday_text)
@@ -186,7 +186,7 @@ def keyboard_callback(update: Update, context: CallbackContext):
         update.callback_query.message.delete()
         select_action_text = B2CCommandText.objects.filter(text_code=13, lang_code=user.lang).first().text
         context.bot.send_message(chat_id=user_id, text=select_action_text, reply_markup=order_markup(user.lang))
-        user.step = 6
+        user.step = 7
         user.save()
     elif query_data[0].__eq__("order_del"):
         msg = update.callback_query.message.text

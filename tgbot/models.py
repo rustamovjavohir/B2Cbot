@@ -116,12 +116,9 @@ class B2CStep(models.Model):
 class B2CPrice(models.Model):
     name_price_order = models.CharField(max_length=250, verbose_name="Тип доставки")
     price = models.IntegerField(null=True, blank=True, verbose_name="Цена")
-    price1 = models.IntegerField(null=True, blank=True, verbose_name="Цена (0-3Кг)")
-    price2 = models.IntegerField(null=True, blank=True, verbose_name="Цена (3-6Кг)")
-    price3 = models.IntegerField(null=True, blank=True, verbose_name="Цена (6-9Кг)")
-    price4 = models.IntegerField(null=True, blank=True, verbose_name="Цена (9-12Кг)")
-    price5 = models.IntegerField(null=True, blank=True, verbose_name="Цена (12-15Кг)")
-    price6 = models.IntegerField(null=True, blank=True, verbose_name="Цена (12 Кг ->)")
+    price1 = models.IntegerField(null=True, blank=True, verbose_name="Пеший курьер (0,1 - 10 Кг)")
+    price2 = models.IntegerField(null=True, blank=True, verbose_name="Автомобильный курьер (10,1 - 20 Кг)")
+    price3 = models.IntegerField(null=True, blank=True, verbose_name="Грузовой курьер  (20,1 ->)")
     percent = models.IntegerField(null=True, blank=True, verbose_name="Процент (%)")
     price_come_back = models.IntegerField(null=True, blank=True, verbose_name="Цена Обратно")
 
@@ -132,3 +129,18 @@ class B2CPrice(models.Model):
 
     def __str__(self):
         return self.name_price_order
+
+
+class LiveLocation(models.Model):
+    # kuryer = models.BigIntegerField(null=False, blank=True)
+    kuryer = models.ForeignKey(Kuryer, on_delete=models.CASCADE)
+    order = models.ForeignKey(B2COrder, on_delete=models.CASCADE)
+    client = models.ForeignKey(B2CUser, on_delete=models.CASCADE)
+    longitude = models.FloatField(null=True, blank=True)
+    latitude = models.FloatField(null=True, blank=True)
+    is_delete = models.BooleanField(default=False, null=True, blank=True)
+    message_id = models.BigIntegerField(null=True, blank=True)
+    send_message_id = models.BigIntegerField(null=True, blank=True)
+
+    def __str__(self):
+        return self.kuryer.kuryer_name

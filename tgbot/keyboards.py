@@ -184,12 +184,23 @@ def yes_or_no_button(lang_code):
 
 def weight_type_button(lang_code):
     back_text = B2CCommandText.objects.filter(text_code=4, lang_code=lang_code).first().text
+    foot_courier_text = B2CCommandText.objects.filter(text_code=41, lang_code=lang_code).first().text
+    driver_courier_text = B2CCommandText.objects.filter(text_code=42, lang_code=lang_code).first().text
+    cargo_courier = B2CCommandText.objects.filter(text_code=43, lang_code=lang_code).first().text
     return ReplyKeyboardMarkup(
-        [[KeyboardButton("0,1 - 3 Кг"), KeyboardButton("3,1 - 6 Кг"), KeyboardButton("6,1 - 9 Кг")],
-         [KeyboardButton("9,1 - 12 Кг"), KeyboardButton("12,1 - 15 Кг"),
-          KeyboardButton("15,1 Кг ->")],
-         [KeyboardButton(back_text)]],
+        [
+            [KeyboardButton(foot_courier_text)],
+            [KeyboardButton(driver_courier_text)],
+            [KeyboardButton(cargo_courier)],
+            [KeyboardButton(back_text)]
+        ],
         one_time_keyboard=True, resize_keyboard=True)
+    # return ReplyKeyboardMarkup(
+    #     [[KeyboardButton("0,1 - 3 Кг"), KeyboardButton("3,1 - 6 Кг"), KeyboardButton("6,1 - 9 Кг")],
+    #      [KeyboardButton("9,1 - 12 Кг"), KeyboardButton("12,1 - 15 Кг"),
+    #       KeyboardButton("15,1 Кг ->")],
+    #      [KeyboardButton(back_text)]],
+    #     one_time_keyboard=True, resize_keyboard=True)
 
 
 def change_profile(lang_code):
@@ -222,7 +233,7 @@ def del_order_inline_button(lang_code):
     close_text = B2CCommandText.objects.get(text_code=36, lang_code=lang_code).text
     delete_text = B2CCommandText.objects.get(text_code=37, lang_code=lang_code).text
     button = [
-        [InlineKeyboardButton(delete_text, callback_data="order_del" ),
+        [InlineKeyboardButton(delete_text, callback_data="order_del"),
          InlineKeyboardButton(close_text, callback_data="order_close")]
     ]
     return InlineKeyboardMarkup(button)

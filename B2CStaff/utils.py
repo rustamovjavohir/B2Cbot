@@ -1,4 +1,8 @@
-from B2CStaff.models import Kuryer, Dispatcher
+from telegram import Update
+from telegram.ext import CallbackContext
+
+from B2CStaff.models import Kuryer, Dispatcher, Kuryer_step
+from tgbot.models import LiveLocation, B2COrder, B2CUser
 
 
 def is_kuryer(user_id):
@@ -16,7 +20,7 @@ def inform(order):
     try:
         text += f"<strong>№: </strong>{order.id}\n"
         text += f"<strong>Товар: </strong>{order.order_name}\n"
-        text += f"<strong>Вес товаров: </strong>{order.weight}\n"
+        text += f"<strong>Способ доставки: </strong>{order.weight}\n"
         if "https" in order.from_location[:10]:
             text += f"<strong>Откуда доставить: </strong> <a href='{order.from_location}'>Локация1</a>\n"
         else:
@@ -48,3 +52,34 @@ def kuryer_text(kuryer, order_name, order_status):
             f"<strong>Товар: </strong>{order_name}\n" \
             f"<strong>Статус: </strong>{order_status}\n"
     return text
+
+
+def location(update: Update, context: CallbackContext):
+    message = None
+    if update.edited_message:
+        message = update.edited_message
+    else:
+        message = update.message
+    current_pos = (update.effective_user.id, (message.location.latitude, message.location.longitude))
+
+    loc_exist = LiveLocation.objects.filter(kuryer__kuryer_telegram_id=update.effective_user.id,
+                                            is_delete=False).exists()
+    print(loc_exist)
+    if loc_exist:
+        # LiveLocation.objects.filter(kuryer__kuryer_telegram_id=update.effective_user.id).update(
+        #     latitude=message.location.latitude, longitude=message.location.longitude)
+        locat = LiveLocation.objects.filter(kuryer__kuryer_telegram_id=update.effective_user.id).first()
+        locat.latitude = message.location.latitude
+        locat.longitude = message.location.longitude
+        locat.save()
+    else:
+        kuryer = Kuryer.objects.filter(kuryer_telegram_id=update.effective_user.id).first()
+        kuryer_step = Kuryer_step.objects.filter(admin_id=update.effective_user.id).first()
+        order = B2COrder.objects.filter(id=kuryer_step.obj).first()
+        client = B2CUser.objects.filter(telegram_id=order.created_by).first()
+        live_location = LiveLocation.objects.create(kuryer=kuryer, order=order, client=client,
+                                                    longitude=message.location.longitude,
+                                                    latitude=message.location.latitude)
+    print(message.message_id)
+
+    print(current_pos)
