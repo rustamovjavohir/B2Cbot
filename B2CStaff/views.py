@@ -8,7 +8,7 @@ from telegram.ext import CallbackContext
 from B2CStaff.keyboards import start_button_kuryer, get_order_button, courier_start_work_button, \
     courier_finished_work_button, accept_order, review_list_button, come_back_button
 from B2CStaff.models import Kuryer_step, Dispatcher, Kuryer
-from B2CStaff.utils import is_kuryer, is_disp, inform
+from B2CStaff.utils import *
 from tgbot.models import B2COrder, B2CCommandText, B2CUser
 
 b2cbot = Bot(token=settings.TELEGRAM_TOKEN)
@@ -24,12 +24,19 @@ def start(update: Update, context: CallbackContext):
                 f"<i>Роль: <ins><b>Курьер</b></ins></i>",
                 reply_markup=start_button_kuryer(user_id), parse_mode="HTML")
         elif is_disp(user_id):
-            update.message.delete()
+            calendar, step = DetailedTelegramCalendar().build()
+            update.message.reply_text(f"Select {LSTEP[step]}",
+                                      reply_markup=calendar)
+            # update.(m.chat.id,
+            #         f"Select {LSTEP[step]}",
+            #         reply_markup=calendar)
 
-            update.message.reply_text(
-                f"<i>Ассалому алейкум! <ins><b>{update.message.from_user.first_name}</b></ins></i>\n"
-                f"<i>Роль: <ins><b>Диспетчер</b></ins></i>",
-                parse_mode="HTML", )
+            # update.message.delete()
+            #
+            # update.message.reply_text(
+            #     f"<i>Ассалому алейкум! <ins><b>{update.message.from_user.first_name}</b></ins></i>\n"
+            #     f"<i>Роль: <ins><b>Диспетчер</b></ins></i>",
+            #     parse_mode="HTML", )
 
         else:
             update.message.delete()

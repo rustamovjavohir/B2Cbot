@@ -8,7 +8,7 @@ from B2CStaff.keyboards import accept_order, arrive_sender_button, get_first_ima
     kuryers_list_button
 from B2CStaff.models import Kuryer
 from B2CStaff.models import Kuryer_step
-from B2CStaff.utils import inform
+from B2CStaff.utils import inform, calendarCustom
 from tgbot.models import B2COrder, B2CPrice
 
 
@@ -17,8 +17,10 @@ def keyboard_callback(update: Update, context: CallbackContext):
     query_data = update.callback_query.data.split('_')
     user_id = update.effective_user.id
     k_step, created = Kuryer_step.objects.get_or_create(admin_id=user_id)
-
-    if query_data[-1].__eq__('select'):
+    if query_data[0].__eq__('cbcal'):
+        date = calendarCustom(update=update, context=context, callback=update.callback_query)
+        print(date)
+    elif query_data[-1].__eq__('select'):
         courier = Kuryer.objects.filter(inwork=True, balance__gte=1).filter(
             ~Q(status=Kuryer.StatusKuryer.COURIER_ACCEPTED_ORDER))
         order_id = query_data[0]
@@ -87,7 +89,7 @@ def keyboard_callback(update: Update, context: CallbackContext):
                 if order.kuryer:
                     kuryer_id = order.kuryer.kuryer_telegram_id
                     context.bot.edit_message_text(chat_id=kuryer_id, message_id=order.del_message, parse_mode="HTML",
-                                             text=f"Заказ <strong>№{order_id}</strong> был ❌отменен диспетчером")
+                                                  text=f"Заказ <strong>№{order_id}</strong> был ❌отменен диспетчером")
                 update.callback_query.message.edit_text(text=new_text + "\n❌Заказ отменен", parse_mode="HTML",
                                                         disable_web_page_preview=True)
             except Exception as ex:

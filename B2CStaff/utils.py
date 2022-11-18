@@ -1,6 +1,6 @@
 from telegram import Update
 from telegram.ext import CallbackContext
-
+from telegram_bot_calendar import DetailedTelegramCalendar, LSTEP
 from B2CStaff.models import Kuryer, Dispatcher, Kuryer_step
 from tgbot.models import LiveLocation, B2COrder, B2CUser
 
@@ -83,3 +83,22 @@ def location(update: Update, context: CallbackContext):
     print(message.message_id)
 
     print(current_pos)
+
+
+def calendarCustom(update: Update, context: CallbackContext, callback, is_start=True):
+    result, key, step = DetailedTelegramCalendar().process(callback.data)
+    if is_start:
+        text = "Start Date"
+    else:
+        text = "End Date"
+    if not result and key:
+
+        context.bot.edit_message_text(f"Select {LSTEP[step]}",
+                                      callback.message.chat.id,
+                                      callback.message.message_id,
+                                      reply_markup=key)
+    elif result:
+        context.bot.edit_message_text(f"{text} {result}",
+                                      callback.message.chat.id,
+                                      callback.message.message_id)
+        return result
